@@ -142,3 +142,102 @@ button, .btn { min-height: 44px; max-width: 100%; white-space: normal; touch-act
   #terminal-container { padding: 18px 12px 26px !important; }
   .dv-mobile-secret-hint { font-size: 10.5px; }
 }
+
+
+/* iPhone Safari layout pass — screenshots 1–6, 2026-11-11.
+   Shared mobile-only rules; desktop Devotion remains untouched. */
+@media (max-width: 900px) {
+  html { width: 100%; overflow-x: hidden; }
+  body {
+    width: 100%;
+    min-width: 0;
+    padding-top: max(20px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden;
+  }
+  /* All fixed intro screens use the safe viewport, not Safari's unstable 100vh. */
+  #boot-screen, #ascii-devotion-screen, #project-id-screen,
+  #typewriter-screen, #transition-screen {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    min-height: 100svh;
+    box-sizing: border-box;
+    padding-left: max(16px, env(safe-area-inset-left)) !important;
+    padding-right: max(16px, env(safe-area-inset-right)) !important;
+  }
+  /* The ASCII matrix must fit its longest line; never crop both ends. */
+  #ascii-devotion-screen { overflow: hidden !important; }
+  #ascii-art {
+    font-size: clamp(3px, 1.15vw, 11px) !important;
+    letter-spacing: 0 !important;
+    width: max-content;
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: pre !important;
+    transform: scaleY(1.8);
+    transform-origin: center;
+  }
+  #project-id-screen {
+    font-size: clamp(10px, 2.65vw, 19px) !important;
+    letter-spacing: 0 !important;
+    overflow-wrap: normal !important;
+    white-space: nowrap !important;
+  }
+  #typewriter-screen {
+    font-size: clamp(1.05rem, 5.2vw, 1.6rem) !important;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  #typewriter-screen > div,
+  #click-to-continue { max-width: 100%; box-sizing: border-box; }
+  #click-to-continue {
+    font-size: clamp(10px, 2.65vw, 14px) !important;
+    letter-spacing: 0 !important;
+    line-height: 1.7;
+    padding: 0 2px;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+  /* Terminal panels: ensure warning rows and lengthy English identifiers wrap. */
+  #content, #report, #terminal-container, #monologue-screen,
+  .folder-content, .sys-prompt, .sys-auth, .sys-alert,
+  .memory-log, .truth-log, .sys-msg {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+  }
+  #content { font-size: clamp(15px, 3.75vw, 18px); line-height: 1.85; }
+  #content p { margin-block: 1.2em; }
+  #content details { padding: 12px; }
+  #content .folder-content { padding-left: 12px; }
+  #content .btn { text-align: center; }
+  .sys-alert, .sys-auth, .sys-prompt { word-break: break-word; }
+  /* Keep ordinary navigation buttons consistently inside panel width. */
+  #content .btn, #report .btn, #monologue-screen .btn {
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  #terminal-container .backup-btn {
+    text-align: left !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  #action-section { padding: 0 !important; }
+  /* Fixed/absolute warning text should not enter the iPhone status bar. */
+  .stage { max-width: calc(100vw - 20px) !important; }
+}
+@media (max-width: 480px) {
+  #typewriter-screen { padding-top: env(safe-area-inset-top) !important; }
+  #content { padding-top: 12px; }
+  #content .final-warning { font-size: clamp(15px, 4vw, 19px); }
+  #terminal-container { font-size: 15px !important; line-height: 1.85; }
+  #terminal-container .sys-auth,
+  #terminal-container .memory-log,
+  #terminal-container .truth-log { padding-left: 10px !important; }
+  #terminal-container .final-words { font-size: 1rem !important; }
+}
