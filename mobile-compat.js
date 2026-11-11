@@ -14,7 +14,11 @@
   // A scene may not advance until sound starts or the player explicitly skips it.
   window.devotionMobileStartAudio = function(audio) {
     if (!audio) return Promise.resolve();
-    return Promise.resolve().then(() => nativePlay.call(audio)).catch(err => {
+    // Call play synchronously: iOS requires the original trusted tap gesture.
+    let started;
+    try { started = nativePlay.call(audio); }
+    catch (err) { started = Promise.reject(err); }
+    return Promise.resolve(started).catch(err => {
       if (!err || (err.name !== "NotAllowedError" && err.name !== "SecurityError")) {
         console.warn("[DEVOTION mobile] Audio playback failed:", audio.currentSrc || audio.src, err);
       }
