@@ -67,7 +67,7 @@
     if (!secrets.length) return;
     const hint = document.createElement("p");
     hint.className = "dv-mobile-secret-hint";
-    hint.textContent = "[ 觸控模式：長按報告中的可疑空白處，可嘗試恢復隱藏文字 ]";
+    hint.textContent = "[ 長按可疑空白處，揭露隱藏文字 ]";
     report.insertBefore(hint, report.firstChild);
     secrets.forEach((node) => {
       node.classList.add("dv-mobile-secret");
