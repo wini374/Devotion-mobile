@@ -367,10 +367,11 @@ PHYSICAL_MEMORY_DUMP_COMPLETE.
     
     <script>
         /* ================= 1. 駭入動畫載入 ================= */
-        window.onload = function() {
+        window.onload = async function() {
             const bgm = document.getElementById("purge-bgm");
             bgm.volume = Math.min(0.8, bgm.volume + 0.05);
-            bgm.play().catch(e => console.log("Audio play blocked", e));
+            if (window.devotionMobileStartAudio) await window.devotionMobileStartAudio(bgm);
+            else bgm.play().catch(e => console.log("Audio play blocked", e));
             let fadeIn = setInterval(() => {
                 if (bgm.volume < 0.8) bgm.volume += 0.05;
                 else clearInterval(fadeIn);
