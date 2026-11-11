@@ -9,6 +9,26 @@
   const nativePlay = HTMLMediaElement.prototype.play;
   let blockedAudio = null;
   let prompt = null;
+  let pendingStart = null;
+
+  // A scene may not advance until sound starts or the player explicitly skips it.
+  window.devotionMobileStartAudio = function(audio) {
+    if (!audio) return Promise.resolve();
+    return Promise.resolve().then(() => nativePlay.call(audio)).catch(err => {
+      if (!err || (err.name !== "NotAllowedError" && err.name !== "SecurityError")) {
+        console.warn("[DEVOTION mobile] Audio playback failed:", audio.currentSrc || audio.src, err);
+      }
+      blockedAudio = audio;
+      const overlay = ensurePrompt();
+      overlay.hidden = false;
+      return new Promise(resolve => { pendingStart = resolve; });
+    });
+  };
+
+  function releaseStart() {
+    if (pendingStart) { const resolve = pendingStart; pendingStart = null; resolve(); }
+  };
+
 
   function ensurePrompt() {
     if (prompt) return prompt;
@@ -20,7 +40,7 @@
     document.body.appendChild(prompt);
     prompt.querySelector("#dv-mobile-audio-unlock").addEventListener("click", () => {
       const target = blockedAudio;
-      if (!target) { prompt.hidden = true; return; }
+      if (!target) { prompt.hidden = true; releaseStart(); return; }
       // Invoke the native method immediately in the trusted click handler.
       let p;
       try { p = nativePlay.call(target); }
@@ -28,6 +48,7 @@
       Promise.resolve(p).then(() => {
         blockedAudio = null;
         prompt.hidden = true;
+        releaseStart();
       }).catch(() => {
         prompt.querySelector("p").textContent = "仍無法播放，請檢查瀏覽器音訊權限後重試。";
       });
@@ -35,6 +56,7 @@
     prompt.querySelector("#dv-mobile-audio-skip").addEventListener("click", () => {
       blockedAudio = null;
       prompt.hidden = true;
+      releaseStart();
     });
     return prompt;
   }
