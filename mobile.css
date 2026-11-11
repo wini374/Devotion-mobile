@@ -1,0 +1,41 @@
+/* DEVOTION — touch-first edition. Original desktop CSS is preserved on main. */
+:root { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { max-width: 100%; overflow-x: clip; }
+body { max-width: 100%; box-sizing: border-box; }
+button, a, summary, .btn { -webkit-tap-highlight-color: rgba(0,220,90,.15); }
+button, .btn, input, select { font-size: max(16px, 1rem); }
+button, .btn { min-height: 44px; max-width: 100%; white-space: normal; touch-action: manipulation; }
+#dv-mobile-audio-prompt[hidden] { display: none !important; }
+#dv-mobile-audio-prompt {
+  position: fixed; inset: 0; z-index: 2147483647;
+  display: flex; justify-content: center; align-items: center;
+  background: rgba(0, 0, 0, .92); padding: 20px; box-sizing: border-box;
+  color: #d9e9db; font-family: "Courier New", monospace; text-align:center;
+}
+.dv-audio-panel { border: 1px solid #24844a; background: #030b05; width: min(440px, 100%); padding: 25px 18px; box-sizing: border-box; box-shadow: 0 0 32px rgba(0,170,60,.18); }
+.dv-audio-code { color: #68e892; font-size: .8rem; letter-spacing: .08em; overflow-wrap:anywhere; }
+.dv-audio-panel p { font-size: .95rem; line-height: 1.8; margin: 19px 0; }
+#dv-mobile-audio-unlock { display:block; width:100%; background:transparent; border:1px solid #4fe58e; color:#a9ffc7; padding:14px; font:inherit; }
+#dv-mobile-audio-skip { display:block; margin:12px auto 0; background:none; border:0; color:#a1a1a1; font:.85rem "Courier New", monospace; }
+.dv-mobile-secret-hint { font-size: .78rem; color: #438b54; text-align:center; padding: 6px 12px; white-space: normal; }
+#report .dv-mobile-secret { display:block; min-height: 36px; border-bottom: 1px dashed rgba(0,170,0,.1); touch-action: manipulation; -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
+#report .dv-mobile-secret.dv-mobile-revealed { color:#d6ffda !important; text-shadow:0 0 8px rgba(70,255,125,.4); border-bottom-color:#3caa63; user-select:text; -webkit-user-select:text; }
+@media (max-width: 900px) {
+  body { padding-left: max(12px, env(safe-area-inset-left)) !important; padding-right: max(12px, env(safe-area-inset-right)) !important; }
+  pre, code, #ascii-art { max-width:100%; overflow-x:auto; }
+  p, span, div { overflow-wrap: break-word; }
+  iframe { max-width:100%; height: min(67dvh, 580px) !important; box-sizing:border-box; }
+  #excel-container, #report, #monologue-screen, #content { max-width: 100% !important; box-sizing: border-box; }
+  #puzzle-input { width: 100% !important; max-width: 100%; box-sizing:border-box; min-height:44px; }
+  #monologue-screen { padding: 18px !important; margin: 18px auto !important; }
+  .stage { width: min(94vw, 700px) !important; max-height: 92dvh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; }
+  #terminal-content, #chat-content, .type-line { overflow-wrap:anywhere; }
+  #credits-overlay, #dv-credits { max-width:100vw; }
+}
+@media (max-width: 480px) {
+  body { font-size: 15px; }
+  h1 { font-size: clamp(1.05rem, 5vw, 1.5rem) !important; overflow-wrap:anywhere; }
+  .stage { width: 95vw !important; }
+  #boot-screen, #transition-screen { padding:18px; box-sizing:border-box; }
+  .typewriter-text { font-size: 1rem; }
+}

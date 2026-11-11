@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>PURGE_REPORT_001.log</title>
+    <style>
+        /* ================= 基礎終端機樣式 ================= */
+        body {
+            background-color: #050505;
+            color: #00cc00;
+            font-family: "Courier New", Courier, monospace;
+            padding: 2rem;
+            line-height: 1.6;
+            overflow-x: hidden;
+            user-select: text; 
+            margin: 0;
+        }
+        
+        ::selection {
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        .hidden-text {
+            color: #050505;
+            cursor: text;
+        }
+        .hidden-text::selection {
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .top-right-hidden { text-align: right; font-size: 0.9em; margin-bottom: 20px; }
+        .bottom-center-hidden { text-align: center; margin-top: 40px; font-size: 0.9em; }
+
+        #boot-sequence { white-space: pre-wrap; font-size: 1.1em; user-select: none; }
+        #report { display: none; white-space: pre-wrap; word-wrap: break-word; max-width: 900px; margin: 0 auto; }
+        
+        .glitch-flash { color: #ff0000; font-weight: bold; text-shadow: 2px 0 red, -2px 0 blue; }
+        
+        a { color: #00cc00; text-decoration: none; font-weight: bold; cursor: pointer; }
+        a:hover { background-color: #00cc00; color: #000; }
+
+        /* ================= 轉場：打字機與文字粉碎特效 ================= */
+        #transition-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: black;
+            z-index: 100;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #type-container {
+            opacity: 1;
+            z-index: 102;
+        }
+
+        .typewriter-text {
+            color: #d3d3d3; 
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2rem;
+            background-color: #d3d3d3;
+            animation: blink 1s infinite;
+            vertical-align: bottom;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* 觸發文字粉碎崩塌動畫 */
+        .text-shatter {
+            animation: shatter-anim 0.6s forwards cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        @keyframes shatter-anim {
+            0% { opacity: 1; filter: blur(0); transform: scale(1) translateY(0); letter-spacing: 1px; }
+            20% { opacity: 1; filter: blur(1px); transform: scale(1.1) translateY(-2px); letter-spacing: 3px; color: #fff; }
+            50% { opacity: 0.6; filter: blur(4px); transform: scale(1.2) translateY(10px) skew(15deg); letter-spacing: 15px; }
+            100% { opacity: 0; filter: blur(10px); transform: scale(1.5) translateY(30px) skew(-25deg); letter-spacing: 30px; }
+        }
+
+        /* ================= 嵌入 Google 試算表與互動輸入區 ================= */
+        #excel-container {
+            display: none;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: #000;
+            margin-top: 20px;
+        }
+        
+        .matrix-header {
+            color: #00cc00;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            border-left: 3px solid #00cc00;
+            padding-left: 10px;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #333;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+            background-color: #000;
+        }
+
+        /* 按鈕與輸入框設計 */
+        .btn {
+            background-color: transparent;
+            border: 1px solid #00cc00;
+            color: #00cc00;
+            padding: 8px 20px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            letter-spacing: 1px;
+        }
+        .btn:hover {
+            background-color: #00cc00;
+            color: #000;
+        }
+
+        #puzzle-input {
+            background-color: #000;
+            color: #00cc00;
+            border: 1px solid #00cc00;
+            padding: 8px 10px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1rem;
+            outline: none;
+            width: 300px;
+        }
+        #puzzle-input:focus {
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+        }
+        #puzzle-input::placeholder {
+            color: #005500;
+        }
+
+        /* ================= 玩家自白過場 ================= */
+        #monologue-screen {
+            display: none;
+            max-width: 800px;
+            margin: 60px auto;
+            background-color: rgba(5, 5, 5, 0.95);
+            border: 1px solid #00aa00;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+            line-height: 1.8;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+        }
+        
+        /* 讓文字在剛產生時是隱藏的，配合打字機效果 */
+        .monologue-text {
+            color: #aaffaa;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            text-shadow: 0 0 2px rgba(170, 255, 170, 0.3);
+        }
+        
+        /* 針對特定顏色的文字 */
+        .highlight-text {
+            color: #ffffff !important;
+            text-shadow: 0 0 5px #ffffff !important;
+        }
+        
+    </style>
+    <!-- Mobile edition: responsive layout and touch/audio compatibility -->
+    <link rel="stylesheet" href="mobile.css">
+    <script src="mobile-compat.js"></script>
+</head>
+<body>
+
+    <!-- BGM 設定 -->
+    <audio id="purge-bgm" src="駭入1.mp3" loop></audio>
+    <audio id="excel-bgm" src="遊戲中.mp3" loop></audio>
+    <audio id="monologue-bgm" src="駭入.mp3" loop></audio>
+
+    <!-- 1. 駭入動畫區 -->
+    <div id="boot-sequence"></div>
+
+    <!-- 2. 報告本體區 (包含隱藏字與亂碼) -->
+    <div id="report">
+     <div style="height: 120px;"></div>
+<div class="hidden-text top-right-hidden">"c"olors are lies</div>
+
+======================================================
+[ 機密 ] 審查與肅清報告 - 第36週期
+======================================================
+授權者：Null
+> 系統狀態：世界熵值達 89% (臨界危險)
+> 警告：過度的衝突將導致致命的世界崩壞。
+> 主旨：抹殺受損資產以強制執行和平
+
+[ 資產_01 // 滲透節點：阿斯蘭朵區域 ]
+> 任務觀測：資產_01已建立非預期情感連結。與當地農民形成高度依附關係。
+> 異常紀錄：
+  資產_01主動請求延長駐留時間。並拒絕執行撤離指令。
+> 管理員裁決：情感污染。武器不需要家庭羈絆。
+> [執行]：焦土協定。
+> 結果：農舍焚毀。資產_01於灰燼中銷毀，以儆效尤。
+> [ 系統備註 ]
+  管理員於裁決前曾三次撤回指令。
+  最終執行紀錄已鎖定。
+
+[ 資產_02 // 滲透節點：新星聯邦 ]
+> 任務觀測：資產_02發生故障，於慶典中向平民發放了管理員級別的物品。
+> 異常紀錄：
+  資產_02多次嘗試修改物品存取限制。
+  系統警告已發出，但未獲得有效回應。
+  最後一次通訊中，資產_02仍堅持其行為不具危害性。
+> 管理員裁決：嚴重違反世界秩序。
+> [執行]：局部結構崩塌。
+> 結果：慶典廣場爆炸。資產_02於爆炸半徑內銷毀。
+> [ 系統備註 ]
+  最後一次通訊紀錄已損毀。
+  僅能還原部分語句：
+  「……我只是想讓他們開心。」
+        
+[ 資產_03 // 滲透節點：灰燼之地 ]
+資產_03已進入反抗軍首領核心圈。
+  觀測期間與多名反抗軍成員建立非必要情感連結。
+  並表現出危險的同理心跡象。
+> 異常紀錄：
+  偵測到資產_03記憶結構出現嚴重錯亂。
+  多個不屬於當前時間線的記憶區塊持續活化。
+  記憶資料重疊，意識完整性急遽下降。
+
+  [ WARNING: MEMORY OVERLOAD ]
+
+  資產_03於崩潰前發出緊急訊號。
+  通訊內容包含大量無法識別的歷史紀錄。
+ > 管理員裁決：
+  令人作嘔的軟弱表現。
+  此等瑕疵必須手動切除。
+> [執行]：手動覆寫。實體介入。
+> 結果：
+  我降臨了營地。
+  我親手處決了資產_03，
+  以展示感情用事的代價。
+  我引爆避難所，掩埋殘骸。
+  反抗軍首領倖存，被仇恨正確地驅動著。
+> [ 系統備註 ]
+  資產_03終止前的記憶傳輸已完成。
+  偵測到大量非當前週期的記憶殘響。
+  管理員本體意識負載異常上升。
+
+  [ ERROR: SOUL_FRAGMENT_UNRECOVERABLE ]
+
+  [ 記憶片段 ]
+  「……這一次，他們終於開始相信彼此了。」」
+
+------------------------------------------------------
+> 系統備註：所有資產痕跡已徹底清除。
+> 讓他們憎恨天空。恐懼維持著和平。
+> [ 和平_維持著_世界 ]
+
+> 目前世界熵值已降至 12% (穩定)
+> 他們只不過是工具。他們毫無意義。
+<div class="hidden-text bottom-center-hidden">I just wanted them to experience this world for me.</div>
+
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝
+0x0000000F 0x00000000 0xFFFFFFFF 0x80070057 0x00000109
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝
+[SYS_WARN] COLOR_PROFILE_CORRUPT_DETECTED
+憿嚗翩璆剖銝瘜a銝剖銝蝝隢隤芷銝銝之摮貉銝行撟渡蝝
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝銝之摮貉銝行撟渡
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝
+0x00000139 0x000000C4 0x000000C5 0x0000001E 0x000000D1 0x0000009F
+[SYS_WARN] MEMORY_MANAGEMENT_FAILURE
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝隢
+憿嚗翩璆剖銝瘜a銝剖銝蝝隢隤芷銝銝之摮貉銝行撟渡蝝
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝銝之摮貉銝行
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+[SYS_WARN] MEMORY_MANAGEMENT_FAILURE
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝隢
+憿嚗翩璆剖銝瘜a銝剖銝蝝隢隤芷銝銝之摮貉銝行撟渡蝝
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝銝之摮貉銝行
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+[SYS_WARN] MEMORY_MANAGEMENT_FAILURE
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝隢
+憿嚗翩璆剖銝瘜a銝剖銝蝝隢隤芷銝<a onclick="startPuzzleTransition()">[c]</a>銝之摮貉銝行撟渡蝝
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝銝之摮貉銝行
+蝝憿銝隢隤芷銝銝剖銝蝝銝之摮貉銝行撟a銝剖銝蝝隢隤
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝銝之摮貉銝行撟渡
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜
+0x00000109 0x0000007E 0x0000003B 0x000000A 0x00000050 0x0000001A
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝a銝剖銝蝝
+[FATAL] CRITICAL_PROCESS_DIED
+憿嚗翩璆剖銝瘜a銝剖銝蝝隢隤芷銝銝之摮貉銝行撟渡蝝
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜
+隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝a銝剖銝蝝隢
+蝝憿銝隢隤芷銝銝剖銝蝝銝之摮貉銝行撟a銝剖銝蝝隢隤
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜
+銝之摮貉銝行撟渡蝝憿銝隢隤芷銝銝剖銝蝝
+憿嚗翩璆剖銝瘜a銝剖銝蝝隢隤芷銝銝之摮貉銝行撟渡蝝
+[SYS_WARN] DISPLAY_DRIVER_STOPPED_RESPONDING
+隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝銝之摮貉銝行撟渡
+a銝剖銝蝝隢隤芷銝璆剖憿嚗翩璆剖銝瘜a銝剖銝蝝隢
+蝝憿銝隢隤芷銝銝剖銝蝝銝之摮貉銝行撟a銝剖銝蝝隢隤
+0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F 0x0000000F
+SYS_ERR_LUMINANCE_OVERLOAD
+PHYSICAL_MEMORY_DUMP_COMPLETE.
+    </div> <!-- 這個 div 是關閉 #report 的，非常重要 -->
+
+    <!-- 3. 打字機與文字粉碎轉場畫面 -->
+    <div id="transition-screen">
+        <div id="type-container">
+            <span id="type-text" class="typewriter-text"></span><span class="cursor"></span>
+        </div>
+    </div>
+
+    <!-- 4. 內嵌 Google 試算表畫面 -->
+    <div id="excel-container">
+        <div class="matrix-header">> [ SYSTEM_OVERRIDE ] ACCESSING EXTERNAL DATABASE: WORLD_ORDER.xlsx</div>
+        
+        <iframe src="https://docs.google.com/spreadsheets/d/1s24xwykhlNP9mMeWRobW1KuMPQMc2bzbyM_MMvry0vw/htmlembed?widget=false&chrome=false"></iframe>
+        
+        <!-- 互動驗證區 -->
+        <div style="margin-top: 20px; text-align: right;">
+            <!-- 初始顯示的謎底按鈕 -->
+            <button id="reveal-btn" class="btn" onclick="showInput()">> 謎底？</button>
+            
+            <!-- 點擊後展開的輸入框 (初始隱藏) -->
+            <div id="input-section" style="display: none; justify-content: flex-end; align-items: center; gap: 10px;">
+                <span id="error-msg" style="color: #ff0000; font-weight: bold; display: none; text-shadow: 0 0 3px red;">[ 存取拒絕：代碼不符 ]</span>
+                <input type="text" id="puzzle-input" placeholder="輸入解碼字串...">
+                <button class="btn" onclick="verifyAnswer()">> 驗證</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 玩家自白過場畫面 (密碼正確後顯示) -->
+    <div id="monologue-screen">
+        <!-- 打字機動畫會透過 JavaScript 逐行生成在這裡 -->
+        <div id="monologue-content"></div>
+
+        <!-- 導向下一關的按鈕 (初始隱藏，打字機結束後浮現) -->
+        <div id="monologue-action" style="display: none; text-align: right; margin-top: 40px;">
+           <a onclick="fadeOutAndNavigate('stage2.html', 'monologue-bgm')" class="btn">> 打開管理員資產紀錄...</a>
+        </div>
+    </div>
+    
+    <script>
+        /* ================= 1. 駭入動畫載入 ================= */
+        window.onload = function() {
+            const bgm = document.getElementById("purge-bgm");
+            bgm.volume = Math.min(0.8, bgm.volume + 0.05);
+            bgm.play().catch(e => console.log("Audio play blocked", e));
+            let fadeIn = setInterval(() => {
+                if (bgm.volume < 0.8) bgm.volume += 0.05;
+                else clearInterval(fadeIn);
+            }, 200);
+
+            const bootText = [
+                "Initiating brute force protocol...",
+                "Bypassing outer firewall...",
+                "Success.",
+                "Accessing CORE_0 database...",
+                "==========================================",
+                "[ ROOT_ACCESS ] ... DENIED.",
+                "[ GUEST_ACCESS ] ... GRANTED (BY_ADMIN_OVERRIDE)."
+            ];
+            
+            const bootDiv = document.getElementById("boot-sequence");
+            const reportDiv = document.getElementById("report");
+            let delay = 0;
+
+            bootText.forEach((line) => {
+                setTimeout(() => { bootDiv.innerHTML += line + "<br>"; }, delay);
+                delay += 800; 
+            });
+
+            setTimeout(() => {
+                bootDiv.innerHTML += "<br><span class='glitch-flash'>[ SYS_MSG ]: \"Let them read it. Let them hate.\"</span><br>";
+            }, delay + 500);
+
+            setTimeout(() => {
+                bootDiv.style.display = "none";
+                reportDiv.style.display = "block";
+            }, delay + 3500);
+        };
+
+        /* ================= 2. 點擊 [c] 的打字機與文字粉碎切換 ================= */
+        async function startPuzzleTransition() {
+            const oldBgm = document.getElementById("purge-bgm");
+            const newBgm = document.getElementById("excel-bgm");
+            let volume = oldBgm.volume;
+            
+            const fadeOut = setInterval(() => {
+                if (volume > 0.05) { volume -= 0.05; oldBgm.volume = volume; } 
+                else { clearInterval(fadeOut); oldBgm.pause(); }
+            }, 100);
+
+            document.getElementById("report").style.display = "none";
+            const transScreen = document.getElementById("transition-screen");
+            const typeContainer = document.getElementById("type-container");
+            const typeText = document.getElementById("type-text");
+            transScreen.style.display = "flex";
+
+            const typeLine = async (text, speed) => {
+                typeText.innerText = "";
+                // 重置粉碎狀態
+                typeContainer.classList.remove("text-shatter");
+                typeContainer.style.opacity = 1;
+                
+                for (let i = 0; i < text.length; i++) {
+                    typeText.innerText += text.charAt(i);
+                    await new Promise(r => setTimeout(r, speed));
+                }
+                
+                await new Promise(r => setTimeout(r, 1200)); 
+                
+                // 觸發文字粉碎
+                typeContainer.classList.add("text-shatter");
+                await new Promise(r => setTimeout(r, 600)); 
+            };
+
+            await new Promise(r => setTimeout(r, 1000)); 
+            
+            await typeLine("WHY...", 80);
+            await new Promise(r => setTimeout(r, 600)); 
+            
+            await typeLine("HOW DID IT GET THIS WAY? ", 60);
+
+            transScreen.style.display = "none";
+            document.getElementById("excel-container").style.display = "block";
+            
+            newBgm.volume = 0;
+            newBgm.play().catch(e => console.log(e));
+            let newVol = 0;
+            const fadeInNew = setInterval(() => {
+                if (newVol < 0.8) { newVol += 0.05; newBgm.volume = newVol; } 
+                else { clearInterval(fadeInNew); }
+            }, 200);
+        }
+
+        /* ================= 3. 謎底輸入與過場驗證邏輯 ================= */
+        function showInput() {
+            document.getElementById("reveal-btn").style.display = "none";
+            const inputSection = document.getElementById("input-section");
+            inputSection.style.display = "flex";
+            document.getElementById("puzzle-input").focus();
+        }
+
+        function verifyAnswer() {
+            const inputField = document.getElementById("puzzle-input");
+            const errorMsg = document.getElementById("error-msg");
+            
+            let answer = inputField.value.toLowerCase().replace(/\s+/g, '');
+            
+            if (answer === "itwasnevermeanttobe") {
+                errorMsg.style.display = "none";
+                
+                // --- 音樂淡出與切換邏輯 ---
+                const oldBgm = document.getElementById("excel-bgm");
+                const newBgm = document.getElementById("monologue-bgm");
+                
+                // 舊音樂淡出
+                let oldVol = oldBgm.volume;
+                const fadeOut = setInterval(() => {
+                    if (oldVol > 0.05) { oldVol -= 0.05; oldBgm.volume = oldVol; } 
+                    else { clearInterval(fadeOut); oldBgm.pause(); }
+                }, 100);
+
+                // 新音樂(獨白音樂)淡入
+                newBgm.volume = 0;
+                newBgm.play().catch(e => console.log(e));
+                let newVol = 0;
+                const fadeIn = setInterval(() => {
+                    if (newVol < 0.8) { newVol += 0.05; newBgm.volume = newVol; } 
+                    else { clearInterval(fadeIn); }
+                }, 200);
+                
+                // 密碼正確：隱藏試算表，顯示自白畫面
+                document.getElementById("excel-container").style.display = "none";
+                const monoScreen = document.getElementById("monologue-screen");
+                monoScreen.style.display = "block";
+                
+                setTimeout(() => {
+                    monoScreen.style.opacity = 1;
+                    // 啟動自白的打字機思考特效
+                    playMonologue();
+                }, 100);
+
+            } else {
+                // 密碼錯誤
+                errorMsg.style.display = "block";
+                inputField.value = "";
+                inputField.focus();
+            }
+        }
+
+        document.getElementById("puzzle-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                verifyAnswer();
+            }
+        });
+
+      /* ================= 4. 玩家自白打字機特效 ================= */
+        async function playMonologue() {
+            const container = document.getElementById("monologue-content");
+            const actionBtn = document.getElementById("monologue-action");
+            
+            // 劇本陣列：加入 instant 屬性，若為 true 則不使用打字機效果
+            const scriptLines = [
+                { class: 'sys-prompt', style: 'border-color: #aaffaa; color: #aaffaa; margin-bottom: 20px; border-left: 3px solid #aaffaa; padding-left: 15px;', text: "> [ 系統提示：覆寫指令核准。矩陣偽裝已解除。 ]<br>> [ 正在載入底層軌跡與作廢日誌... ]", instant: true },
+                { class: 'monologue-text', style: '', text: "「IT WAS NEVER MEANT TO BE...」\n螢幕上的字串映入眼簾的瞬間，我的呼吸停滯了一拍。" },
+                { class: 'monologue-text', style: '', text: "不對。\n這不可能。" },
+                { class: 'monologue-text', style: '', text: "反覆確認著眼前的訊息，甚至懷疑是破解過程中產生了某種錯誤。但無論我如何重新執行檢索、比對資料，最後浮現的結果始終沒有改變。" },
+                { class: 'monologue-text highlight-text', style: '', text: "「IT WAS NEVER MEANT TO BE...」" },
+                
+                // --- 這裡開始微調語氣，加入舊友視角 ---
+                { class: 'monologue-text', style: '', text: "這句話的來源，竟然是他。" },
+                { class: 'monologue-text', style: '', text: "那個曾經和我並肩作戰，後來卻為了鞏固統治，不惜將整座農莊付之一炬，連我們的營地也一併化為焦土的人。" },
+                { class: 'monologue-text', style: '', text: "我曾經以為，自從他戴上那頂王冠後，他的每一道命令背後就只剩下權力與野心。可現在，這句話卻靜靜地躺在他的系統深處，像是一封被刻意埋葬的遺書。" },
+                
+                {
+                    class: 'monologue-text',
+                    style: '',
+                    text: "還有那些被標記為「資產」的人......\n為什麼他們的死亡，會被寫得像是一場例行的系統維護？"
+                },
+                {
+                    class: 'monologue-text',
+                    style: '',
+                    text: "如果他們真的只是工具，為什麼系統裡還留著那些無法被解釋的記憶與情感？"
+                },
+
+                // ------------------------------------
+
+                { class: 'monologue-text', style: '', text: "它並非出現在任何公開紀錄或私人通訊之中。\n而是在這個用來監視、識別，甚至定義我們顏色的底層矩陣裡。" },
+                { class: 'monologue-text', style: '', text: "另一行字浮現在腦海中。" },
+                { class: 'monologue-text highlight-text', style: '', text: "「COLORS ARE LIES.」" },
+                { class: 'monologue-text', style: '', text: "背脊一陣發涼。\n顏色皆是謊言？" },
+                { class: 'monologue-text', style: '', text: "如果這是真的，那麼我們一直以來深信不疑的顏色區分究竟是什麼？那些被標記為敵人的人，那些被我們仇恨、追殺，甚至親手送上戰場的對象……他們真的如我們所認知的那樣嗎？" },
+                { class: 'monologue-text', style: '', text: "我們花了整整三年，相信顏色決定立場，相信不同顏色之間注定只能彼此廝殺。我們為此失去了同伴、家園，甚至連活下去的理由都曾被奪走。" },
+                
+                // --- 這裡再次強化舊友間的情感羈絆與困惑 ---
+                { class: 'monologue-text', style: '', text: "可如果這一切從一開始就是一場精心編排的騙局\n如果所謂的敵我之分，只是他為了操弄我們、逼迫我們走向戰場而強加的標籤呢？" },
+                { class: 'monologue-text', style: '', text: "那麼，這三年來我們究竟在跟誰戰鬥？\n而那個親手點燃無數戰火、背叛了我們所有人的他，又為什麼會留下這樣一句話？" },
+                // ------------------------------------
+
+                { class: 'monologue-text', style: '', text: "還來不及整理思緒，螢幕便再次閃爍。" },
+                { class: 'sys-prompt', style: 'border-color: #00cc00; color: #00cc00; margin-bottom: 20px; border-left: 3px solid #00cc00; padding-left: 15px;', text: "> [ROOT DIRECTORY UNLOCKED]", instant: true },
+                { class: 'monologue-text', style: '', text: "隨著色彩矩陣的防護層被逐一破解，一個原本不應該存在的底層目錄，正緩緩敞開。裡面沒有任何可供辨識的檔案名稱，只有一連串被加密的資料，以及一個不斷重複出現的標記。" },
+                { class: 'sys-prompt', style: 'border-color: #ff3333; color: #ff3333; margin-bottom: 20px; border-left: 3px solid #ff3333; padding-left: 15px;', text: "> [PROJECT: ______]<br>> 專案名稱遭到抹除。<br>> 建立日期：三年前<br>> 最後修改者：——", instant: true },
+                
+                // --- 這裡將「戰爭開始」替換為兩人分道揚鑣的痛點 ---
+                { class: 'monologue-text', style: '', text: "我手指懸在鍵盤上。\n三年前...正是他戴上王冠，我們分道揚鑣的時候。" },
+                { class: 'monologue-text', style: '', text: "盯著那個空白的專案名稱，忽然意識到，自己可能一直都在追查錯誤的東西。" },
+                { class: 'monologue-text', style: '', text: "或許，真正需要被揭露的，從來就不是他隱瞞了什麼。\n而是這個世界，究竟從什麼時候開始，就不再允許我們看見真相。" },
+                { class: 'monologue-text', style: '', text: "深吸了一口氣，將手指重新放回鍵盤。\n不管底下藏著什麼，我都必須挖下去。" }
+                // ------------------------------------
+            ];
+
+            for (let i = 0; i < scriptLines.length; i++) {
+                const lineData = scriptLines[i];
+                
+                // 建立新的段落容器
+                const div = document.createElement("div");
+                div.className = lineData.class;
+                if (lineData.style) div.style.cssText = lineData.style;
+                container.appendChild(div);
+                
+                const text = lineData.text;
+
+                // 如果設定為 instant: true，就直接印出整段，不帶打字機效果
+                if (lineData.instant) {
+                    div.innerHTML = text;
+                    window.scrollTo(0, document.body.scrollHeight);
+                    await new Promise(r => setTimeout(r, 600)); // 讓玩家稍微看清楚再繼續
+                } else {
+                    // 一般的玩家自白打字機效果
+                    const cursor = document.createElement("span");
+                    cursor.className = "cursor";
+                    let currentHTML = "";
+                    
+                    for (let j = 0; j < text.length; j++) {
+                        if (text.charAt(j) === '\n') {
+                            currentHTML += "<br>";
+                        } else {
+                            currentHTML += text.charAt(j);
+                        }
+                        div.innerHTML = currentHTML;
+                        div.appendChild(cursor);
+                        
+                        let speed = Math.random() * 30 + 30; // 基礎速度 30~60 毫秒
+                        if (['，', '。', '？', '！', '\n'].includes(text.charAt(j))) {
+                            speed += 300; // 遇到標點符號額外停頓
+                        }
+                        
+                        window.scrollTo(0, document.body.scrollHeight);
+                        await new Promise(r => setTimeout(r, speed));
+                    }
+                    
+                    cursor.remove();
+                    await new Promise(r => setTimeout(r, 800)); // 每一句話打完後停頓一下再打下一句
+                }
+            }
+            
+            // 全部自白結束後，顯示進入下一關的按鈕，並自動滾動到最底
+            actionBtn.style.display = "block";
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+        /* ================= 音樂淡出並跳轉頁面 ================= */
+        function fadeOutAndNavigate(targetUrl, bgmId) {
+            const bgm = document.getElementById(bgmId);
+            
+            if (bgm && !bgm.paused) {
+                let vol = bgm.volume;
+                // 每 100 毫秒降低一次音量，大約 1~1.5 秒淡出完畢
+                const fadeOut = setInterval(() => {
+                    if (vol > 0.05) { 
+                        vol -= 0.05; 
+                        bgm.volume = vol; 
+                    } else { 
+                        clearInterval(fadeOut); 
+                        bgm.pause(); 
+                        window.location.href = targetUrl; // 音樂完全停止後跳轉
+                    }
+                }, 100); 
+            } else {
+                // 如果音樂本來就沒在播，直接跳轉
+                window.location.href = targetUrl;
+            }
+        }
+    </script>
+</body>
+</html>

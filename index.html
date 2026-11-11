@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SERVER_BACKUP_000.LOG/n*watch out for the volume*</title>
+    <style>
+        /* 基礎終端機設定 */
+        body { 
+            margin: 0; 
+            min-height: 100vh;
+            background-color: black; 
+            color: #00cc00; 
+            font-family: "Courier New", Courier, monospace; 
+            overflow-x: hidden; 
+            padding: 20px;
+            box-sizing: border-box;
+            cursor: crosshair; 
+        }
+
+        /* 階段一：開機畫面 */
+        #boot-screen { 
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            background-color: black;
+            z-index: 100;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .blink-text {
+            animation: blink 2s infinite; 
+            margin-top: 30px;
+            cursor: pointer;
+        }
+
+        .warning-text {
+            color: #ff3333;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        @keyframes blink { 
+            0%, 100% { opacity: 1; } 
+            50% { opacity: 0.3; } 
+        }
+
+        /* 階段二：動態代碼字樣 (滿版螢幕設計) */
+        #ascii-devotion-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: black;
+            z-index: 50;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+            overflow: hidden; /* 防止產生卷軸 */
+        }
+
+        #ascii-art {
+            color: #00cc00;
+            text-shadow: 0 0 15px #00cc00, 0 0 30px #00cc00;
+            /* 2.5vw 剛好能讓這 60 幾個字元的寬度無縫貼齊螢幕左右邊緣 */
+            font-size: 2.5vw; 
+            font-weight: bold;
+            line-height: 1;
+            white-space: pre;
+            text-align: center;
+            /* 垂直方向拉長 1.8 倍，讓字體填滿更多垂直空間並帶有壓迫感 */
+            transform: scaleY(1.8); 
+        }
+
+        /* 階段三：專案編號 */
+        #project-id-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: black;
+            z-index: 45;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            letter-spacing: 3px;
+            opacity: 0; 
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* 階段四：打字機畫面 */
+        #typewriter-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: black;
+            z-index: 40;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 1.8rem;
+            white-space: pre-wrap;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 12px; height: 1.8rem;
+            background-color: #00cc00;
+            animation: blink 1s infinite;
+            vertical-align: bottom;
+            margin-left: 5px;
+        }
+
+        #click-to-continue {
+            display: none;
+            font-size: 1rem;
+            color: #005500;
+            margin-top: 30px;
+            animation: blink 2s infinite;
+        }
+
+        /* 階段五：零號檔案內容 */
+        #content { 
+            display: none;
+            opacity: 1;
+            transition: opacity 900ms ease-in-out;
+            max-width: 800px;
+            margin: 0 auto;
+            padding-bottom: 50px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #00cc00;
+            border-bottom: 1px solid #00cc00;
+            padding-bottom: 10px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .highlight {
+            color: #fff;
+            text-shadow: 0 0 5px #00cc00;
+        }
+
+        details {
+            margin: 20px 0;
+            border: 1px solid #00cc00;
+            padding: 10px;
+            background-color: rgba(0, 255, 0, 0.05);
+            cursor: pointer;
+        }
+
+        summary {
+            font-weight: bold;
+            font-size: 1.1rem;
+            outline: none;
+            list-style: none;
+        }
+        
+        summary::-webkit-details-marker { display: none; }
+        summary::before { content: "📁 "; }
+        details[open] summary::before { content: "📂 "; }
+
+        .folder-content {
+            margin-top: 15px;
+            padding-left: 20px;
+            border-left: 2px solid #004400;
+            color: #aaffaa;
+            cursor: text;
+        }
+
+        .final-warning {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 1.2rem;
+            color: #ff3333;
+            text-shadow: 0 0 5px #ff0000;
+        }
+
+        /* 新增：後續互動區塊的樣式 */
+        .btn {
+            background-color: transparent;
+            border: 1px solid #00cc00;
+            color: #00cc00;
+            padding: 10px 20px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none; /* 給 href 連結用的 */
+        }
+        .btn:hover {
+            background-color: #00cc00;
+            color: #000;
+        }
+        
+        .hidden-section {
+            display: none;
+            animation: fadeIn 1s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .sys-prompt {
+            color: #00cc00;
+            margin-bottom: 20px;
+            border-left: 3px solid #00cc00;
+            padding-left: 15px;
+        }
+
+    </style>
+    <!-- Mobile edition: responsive layout and touch/audio compatibility -->
+    <link rel="stylesheet" href="mobile.css">
+    <script src="mobile-compat.js"></script>
+</head>
+<!-- 原本的 body onclick 事件保留，用於處理前三個階段的切換 -->
+<body onclick="handleScreenClick()">
+
+    <!-- BGM 音軌 -->
+    <audio id="bgm" src="開頭1.mp3" loop></audio>
+
+    <!-- 階段一 -->
+    <div id="boot-screen">
+        <div>SERVER_BACKUP_000.LOG</div>
+        <div class="warning-text">* watch out for the volume *</div>
+        <div class="blink-text">[ CLICK TO INITIALIZE ]</div>
+    </div>
+
+    <!-- 階段二：滿版動態代碼字樣 -->
+    <div id="ascii-devotion-screen">
+        <pre id="ascii-art"></pre>
+    </div>
+
+    <!-- 階段三 -->
+    <div id="project-id-screen">
+        PROJECT_ID: THE_SPECTRAL_STRAIN
+    </div>
+
+    <!-- 階段四 -->
+    <div id="typewriter-screen">
+        <div><span id="tw-text"></span><span class="cursor"></span></div>
+        <div id="click-to-continue">[ 系統解密完成 - 點擊畫面繼續載入資料夾 ]</div>
+    </div>
+
+    <!-- 階段五：零號檔案內容 -->
+    <div id="content">
+        <!-- 將原本的內容包進 part1 區塊，方便切換 -->
+        <div id="part1">
+           
+<p>「致每一個還活在殘酷色彩劃分下的倖存者：」</p>
+
+<p>
+    在這個世界，有一條不成文的規矩——
+    <span class="highlight">不要隨便抬頭看天</span>。
+</p>
+
+<p>
+    因為那個自稱為「Null」的管理員，
+    正坐在我們觸碰不到的基岩王座上，
+    冷冷地俯視著這個世界。
+</p>
+
+<p>
+    在他眼裡，我們不是生命。
+    只是這個伺服器裡，隨時可以被刪除、
+    覆寫，甚至徹底抹除的代碼。
+</p>
+
+<p>
+    他用六種顏色劃分世界的邊界，
+    告訴我們這叫作「和平」。
+    但我們都知道，那不過是一座巨大的牢籠。
+</p>
+
+<p>
+    更令人不寒而慄的，是那些沒有名字的「幽靈特務」。
+</p>
+
+<p>
+    沒有人知道他們從何而來，也沒有人知道他們真正的身分。
+    他們可能是路邊沉默的流浪漢，
+    可能是與你把酒言歡的旅人，
+    甚至可能是與你並肩作戰、願意為你擋下刀劍的同伴。
+</p>
+
+<p>
+    人們稱他們為——
+    <span class="highlight">「天空的眼睛」</span>。
+</p>
+
+<p>
+    傳聞他們是管理員散落在世界各地的棋子，
+    替那位高坐王座的暴君監視我們的一舉一動。
+</p>
+
+<p>
+    沒有人知道究竟有多少雙眼睛混在人群之中。
+    也沒有人知道，為什麼有些人在消失之前，
+    總會不約而同地抬頭望向天空。
+</p>
+
+<p>
+    但我們知道一件事。
+</p>
+
+<p>
+    每當那些眼睛閉上，
+    往往就意味著某個地方即將迎來災難。
+</p>
+
+<p>
+    你們應該都聽過這三年來，
+    流傳在三大陣營裡的那些可怕傳說吧？
+</p>
+
+
+            <details>
+                <summary>【阿斯蘭朵的無名火】</summary>
+                <div class="folder-content">
+                    <p>阿斯蘭朵的邊境農業區，風吹過來都帶著麥子的甜味。</p>
+                    <p>那年秋天，一對年邁的農民夫婦在田埂邊撿到一個流浪漢。他一身灰撲撲的，不說名字，不說來處，連道謝都只是點點頭。妻子端來熱麵包，丈夫把東邊那塊最肥的麥田劃給他，說：「有地，人就不會亂跑了。」</p>
+                    <p>流浪漢很勤快，天沒亮就下田，天黑了才回來，從不惹事。鄰居說，這年輕人安靜得有點不像活人。</p>
+                    <p>只有一個放羊的孩子，在黃昏時看見過一件怪事。
+                    
+                    <p>那個平時沉默寡言的流浪漢，獨自站在麥田中央，仰頭望著逐漸暗下來的天空。</p>
+                    <p> 他的嘴唇微微開合，彷彿正在與某個看不見的人交談。</p>
+                    <p>孩子說，他似乎聽見了一句話。</p>
+                    <p> 「……我不想離開這裡。」</p>
+                    <p>緊接著，流浪漢便沉默了。</p>
+                    <p>他低下頭，望向遠處亮起燈火的農舍。</p>
+                    <p>那裡有人正在等他回家。</p>
+                    <p>第二天，阿斯蘭朵便被烈火吞沒。</p>
+                    <p>沒有人知道，流浪漢究竟向天空說了什麼。</p>
+                    
+                   
+            </details>
+
+            <details>
+                <summary>【新星節的血色煙火】</summary>
+                <div class="folder-content">
+                    <p>新星聯邦的中心廣場，是世界上最熱鬧的地方。</p>
+                    <p>新星節那天，燈籠掛滿了每一根廊柱，樂師在噴泉旁奏著輕快的曲子，孩子們舉著糖人在人群裡鑽來鑽去。整個聯邦的人都擠在這裡，連衛兵的盔甲上都別了花。</p>
+                    <p>就是在這一天，出現了一個戴著奇怪面具的遊客。面具沒有表情，只有一道細細的裂縫當作笑容。他不買東西，也不看表演，只是慢慢地走。人們說，他走過的地方，空氣會有一瞬間變得很安靜。</p>
+                    <p>然後他從口袋裡拿出了一樣不該存在於這個世界的東西：發著幽幽紫光的附魔蘋果。</p>
+                    <p>他把蘋果一顆一顆分給廣場上的孩子。孩子們笑著接過，那光映在他們臉上，美得像一場夢。守衛察覺不對，握緊長槍上前盤問：「喂，你──」</p>
+                    <p>話沒說完，整個廣場的地底傳來了一聲悶響。接著是第二聲、第三聲、第十聲。連環的 TNT 從地底一路炸開，石板像紙一樣掀起，噴泉衝上半空，樂聲、笑聲和糖人一起被白光吞沒。</p>
+                    <p>當煙塵散去，節慶變成了屠宰場。七百一十二人，沒有一個人來得及逃走。而那個面具遊客，在爆炸最亮的那一刻，只是抬頭看了天一眼，便憑空消失，彷彿從來沒有存在過。</p>
+                    <p>廣場上到現在還找不到那些紫色蘋果的殘骸。倖存的人只記得，孩子們在最後一刻，手裡都還緊緊握著它。</p>
+                </div>
+            </details>
+
+        
+                   
+<details>
+    <summary>【灰燼之地的背叛】</summary>
+    <div class="folder-content">
+
+        <p>
+            這是我們反抗軍永遠的痛，
+            也是首領至今揮之不去的夢魘。
+        </p>
+
+        <p>
+            灰燼之地沒有四季。
+            這裡只有灰色的天空、破碎的岩層，
+            以及永遠吹不散的塵埃。
+        </p>
+
+        <p>
+            反抗軍的成員大多來自六色制度下
+            被剝奪身分的人。
+            有些人失去了家園，有些人失去了家人。
+            還有些人，甚至連自己原本的顏色都已經忘記。
+        </p>
+
+        <p>
+            我們聚集在一起，只為了一個共同的目標。
+        </p>
+
+        <p>
+            <span class="highlight">推翻管理員。</span>
+        </p>
+
+        <p>
+            灰燼之地的夜晚很冷。
+        </p>
+
+        <p>
+            我們總是圍著營火取暖，
+            而在首領最信任的位置旁，
+            總坐著一個不怎麼說話的朋友。
+        </p>
+
+        <p>
+            他是自己走進營地的，說想加入我們。
+        </p>
+
+        <p>
+            起初沒有人相信他。
+            他不肯透露自己的過去，也不願提起自己的名字。
+            無論我們如何追問，他始終只是沉默。
+        </p>
+
+        <p>
+            但他幾次在暗處替首領擋下冷箭，
+            也會在最難熬的夜裡默默替大家添柴。
+        </p>
+
+        <p>
+            他不愛笑，卻總是把最後一塊麵包推到別人面前。
+        </p>
+
+        <p>
+            久而久之，大家也就不再追問他的來歷。
+        </p>
+
+        <p>
+            首領曾拍著他的肩膀說：
+            「不管你以前是誰，現在你就是我們的兄弟。」
+        </p>
+
+        <p>
+            我們都以為，他會一直留在這裡。
+        </p>
+
+        <p>
+            直到後來，我們才發現，
+            他似乎一直被某種看不見的東西折磨著。
+        </p>
+
+        <p>
+            有時候，他會在深夜突然驚醒，
+            對著空無一人的角落低聲道歉。
+        </p>
+
+        <p>
+            有時候，他會忘記前一天才發生的事，
+            卻能清楚說出某個早已毀滅的城市，
+            甚至連街道的名字都記得一清二楚。
+        </p>
+
+        <p>
+            更奇怪的是，他偶爾會說起一些
+            從未發生過的戰爭。
+        </p>
+
+        <p>
+            那些不存在的戰場、早已死去的陌生人，
+            以及一場又一場不同的末日。
+        </p>
+
+        <p>
+            我們以為那只是戰爭留下的創傷。
+        </p>
+
+        <p>
+            直到那個晚上。
+        </p>
+
+        <p>
+            營火燒得很旺。
+        </p>
+
+        <p>
+            他原本正安靜地坐在我們身旁，
+            卻突然僵住了身體。
+        </p>
+
+        <p>
+            「……不對。」
+        </p>
+
+        <p>
+            他望著火焰，眼神逐漸失去焦距。
+        </p>
+
+        <p>
+            「這個地方……我明明見過。」
+        </p>
+
+        <p>
+            下一秒，他猛地抱住自己的頭，
+            像是有無數個聲音正在他的腦海裡同時尖叫。
+        </p>
+
+        <p>
+            他的肩膀劇烈顫抖，
+            痛苦地倒在地上，
+            咳出一口又一口黑色的血。
+        </p>
+
+        <p>
+            那血不像真正的血液。
+        </p>
+
+        <p>
+            它更像是一格格閃爍破碎的雜訊，
+            滴在地上，便無聲地消散。
+        </p>
+
+        <p>
+            有人衝上前想扶起他，
+            卻聽見他用幾乎破碎的聲音喃喃自語。
+        </p>
+
+        <p>
+            「太多了……」
+        </p>
+
+        <p>
+            「我已經……記不住了……」
+        </p>
+
+        <p>
+            他顫抖著抬起頭，望向天空。
+        </p>
+
+        <p>
+            「……拜託。」
+        </p>
+
+        <p>
+            「不能再這樣下去了……」
+        </p>
+
+        <p>
+            然後，天空裂開了。
+        </p>
+
+        <p>
+            那道裂縫從雲層深處一路撕向地平線，
+            刺眼的光芒傾瀉而下。
+        </p>
+
+        <p>
+            那個被我們稱為「Null」的惡魔，
+            親自降臨在營火之前。
+        </p>
+
+        <p>
+            我們甚至來不及拔劍。
+        </p>
+
+        <p>
+            一股無形的力量便將所有人壓倒在地，
+            連呼吸都成了奢侈。
+        </p>
+
+        <p>
+            我們只能眼睜睜看著管理員，
+            一步一步走向那個倒在地上的朋友。
+        </p>
+
+        <p>
+            奇怪的是，他沒有逃跑。
+        </p>
+
+        <p>
+            沒有求饒，也沒有反抗。
+        </p>
+
+        <p>
+            他只是艱難地抬起頭，
+            望向那個所有人都恐懼的身影。
+        </p>
+
+        <p>
+            「……你終於來了。」
+        </p>
+
+        <p>
+            他的聲音很輕。
+        </p>
+
+        <p>
+            那一瞬間，他臉上的表情甚至不像恐懼。
+        </p>
+
+        <p>
+            更像是一個等待了太久的人，
+            終於等到了某個早已預料的結局。
+        </p>
+
+        <p>
+            Null 沒有回答。
+        </p>
+
+        <p>
+            「我看見了……」
+        </p>
+
+        <p>
+            「他們真的……開始相信彼此了。」
+        </p>
+
+        <p>
+            我們不知道他究竟在說什麼。
+        </p>
+
+        <p>
+            只看見 Null 低下頭，
+            俯視著那張因痛苦而扭曲的面孔。
+        </p>
+
+        <p>
+            然後，那個暴君冷笑了一聲。
+        </p>
+
+        <p>
+            「你太心軟了。」
+        </p>
+
+        <p>
+            <span class="highlight">
+                「心軟的東西，沒有存在的價值。」
+            </span>
+        </p>
+
+        <p>
+            朋友沉默了。
+        </p>
+
+        <p>
+            片刻之後，他竟然露出了一個極其疲憊的笑容。
+        </p>
+
+        <p>
+            「……是啊。」
+        </p>
+
+        <p>
+            「或許……你說得對。」
+        </p>
+
+        <p>
+            下一秒，Null 親手貫穿了他的胸膛。
+        </p>
+
+        <p>
+            我們眼睜睜看著他的身體崩解。
+        </p>
+
+        <p>
+            血肉逐漸失去了形狀，
+            取而代之的是無數細小的光點，
+            像遭到刪除的資料一樣，
+            一片一片地碎裂、消散。
+        </p>
+
+        <p>
+            最後，什麼也沒有留下。
+        </p>
+
+        <p>
+            沒有屍體。
+        </p>
+
+        <p>
+            沒有遺物。
+        </p>
+
+        <p>
+            甚至連一絲灰燼都沒有。
+        </p>
+
+        <p>
+            營火仍然燃燒著。
+        </p>
+
+        <p>
+            可那個曾經默默替我們添柴、
+            把最後一塊麵包留給別人的朋友，
+            已經永遠消失了。
+        </p>
+
+        <p>
+            Null 沒有解釋。
+        </p>
+
+        <p>
+            他甚至沒有再看我們一眼。
+        </p>
+
+        <p>
+            他轉身離開，
+            只在原地留下一顆點燃的 TNT。
+        </p>
+
+        <p>
+            引線嘶嘶作響，
+            像是在嘲笑我們的無力。
+        </p>
+
+        <p>
+            下一秒，爆炸吞沒了一切。
+        </p>
+
+        <p>
+            我們的地下避難所，
+            瞬間化為一個巨大的隕石坑。
+        </p>
+
+        <p>
+            首領活了下來。
+        </p>
+
+        <p>
+            但從那天起，
+            他的心也跟著那場爆炸一起死了。
+        </p>
+
+        <p>
+            後來，有人開始懷疑，
+            那個沉默寡言的朋友，
+            會不會就是傳聞中的「天空的眼睛」。
+        </p>
+
+        <p>
+            如果真是如此，
+            那麼暴君為什麼要親手殺死自己的棋子？
+        </p>
+
+        <p>
+            沒有人能回答。
+        </p>
+
+        <p>
+            我們只知道，
+            在那場災難之後，
+            再也沒有人敢相信那些
+            來歷不明的陌生人。
+        </p>
+
+    </div>
+</details>
+
+                </div>
+            </details>
+
+            <p class="final-warning">
+                所以，倖存者，請記住零號檔案的第一條：<br>
+                不要抬頭看向天空。<br>
+                因為祂，也許正在看你。
+            </p>
+            
+            <!-- 新增的按鈕 1：前往身分確認 -->
+            <button class="btn" onclick="showPart2(event)">> 點擊繼續...</button>
+        </div>
+
+        <!-- 第二部分：身分確認 (初始隱藏) -->
+        <div id="part2" class="hidden-section">
+            <div class="sys-prompt">
+               > [ 系統登入核實程序啟動 ]<br>
+            > 掃描生物特徵... 匹配成功。<br>
+            > 登入身分確認：反抗軍前任參謀幹部 (ID: ASH-004)<br>
+            > 狀態：於避難所爆炸事件中倖存，目前隱匿中。<br>
+        </div>
+        <p>終端機螢幕亮起微弱的綠光。你已經躲藏了很久，自從那場大火摧毀了你們的一切後，反抗軍幾乎名存實亡。</p>
+        <p>曾經，你以為你比任何人都了解那個戴上王冠的人，直到他親手下令將你們的營地化為焦土。</p>
+        <p>但今天，你的私人加密頻道突然收到了一條強制蓋台的訊息。發件人是那個本該已經徹底放棄的首領。</p>
+            
+            <!-- 新增的按鈕 2：讀取信件 -->
+            <button class="btn" onclick="showPart3(event)">> 讀取加密信件</button>
+        </div>
+
+        <!-- 第三部分：首領的信與駭入連結 (初始隱藏) -->
+        <div id="part3" class="hidden-section">
+            <h2 style="color: #00cc00; border-bottom: 1px solid #00cc00;">[ 加密訊息 ] 發件人：首領</h2>
+           
+<p>「我知道，把這個任務交給你很殘忍。」</p>
+
+<p>「尤其是在發生了那件事之後。」</p>
+
+<p>
+    「但在這個世界上，
+    恐怕再也沒有人比你更了解他的思考方式。」
+</p>
+
+<p>「畢竟，在三年前……」</p>
+
+<p>
+    「在他戴上那頂王冠，
+    成為如今這個冷血暴君之前……」
+</p>
+
+<p class="highlight">
+    「你們曾經是最好的朋友。」
+</p>
+
+<p>
+    「我不知道他究竟經歷了什麼，
+    也不知道是什麼讓他變成現在這副模樣。」
+</p>
+
+<p>
+    「但我知道，你們曾經一起坐在營火旁，
+    談論著要如何改變這個世界。」
+</p>
+
+<p>
+    「現在，你是唯一有機會終結這一切的人。」
+</p>
+
+<p>「進入系統，破解他的底層代碼，找出他的弱點。」</p>
+
+<p>「不要讓過去的感情影響你的判斷。」</p>
+
+<p>「祝你好運。」</p>
+
+            
+
+            <div class="sys-prompt" style="margin-top: 40px; border-color: #ff4444; color: #ff4444;">
+                > [ 警告：偵測到不穩定的連線路徑 ]<br>
+                > [ 目標伺服器：CORE_0_INQUISITION_LOGS ]
+            </div>
+
+            <!-- 觸發淡出與換頁腳本 -->
+            <a href="#" onclick="fadeAndNavigate(event, 'purge.html')" class="btn">> 啟動隧道協議，駭入管理員資料庫...</a>
+        </div>
+    </div>
+
+    <!-- 遺失的控制腳本補回 -->
+    <script>
+        let currentStage = 0;
+
+        const baseArt = `
+#######   ####### ##     ## ######### ######## ##### ######### ##     ## 
+##     #  ##      ##     ## ##     ##    ##      #   ##     ## # #    ## 
+##      # ##      ##     ## ##     ##    ##      #   ##     ## ##  #  ## 
+##      # #####   ##     ## ##     ##    ##      #   ##     ## ##   # ## 
+##      # ##       #     #  ##     ##    ##      #   ##     ## ##    # # 
+##     #  ##        #   #   ##     ##    ##      #   ##     ## ##     ## 
+#######   #######     #     #########    ##    ##### ######### ##     ## 
+`;
+
+        // 保留原本點擊全螢幕切換前三階段的機制
+        function handleScreenClick() {
+            if (currentStage === 0) {
+                currentStage = 1;
+                document.getElementById('bgm').play();
+                document.getElementById('boot-screen').style.display = 'none';
+                
+                const asciiScreen = document.getElementById('ascii-devotion-screen');
+                const artContainer = document.getElementById('ascii-art');
+                asciiScreen.style.display = 'flex';
+                
+                const codeChars = "0189ABCDEF"; 
+                let glitchInterval = setInterval(() => {
+                    let newArt = '';
+                    for (let i = 0; i < baseArt.length; i++) {
+                        if (baseArt[i] === '#') {
+                            newArt += codeChars[Math.floor(Math.random() * codeChars.length)];
+                        } else {
+                            newArt += baseArt[i];
+                        }
+                    }
+                    artContainer.innerText = newArt;
+                }, 50);
+
+                setTimeout(() => {
+                    asciiScreen.style.opacity = 0;
+                    setTimeout(() => {
+                        clearInterval(glitchInterval);
+                        asciiScreen.style.display = 'none';
+                        showProjectID();
+                    }, 500); 
+                }, 2500);
+
+            } else if (currentStage === 2) {
+                currentStage = 3;
+                document.getElementById('typewriter-screen').style.display = 'none';
+                
+                const content = document.getElementById('content');
+                content.style.display = 'block';
+                
+                content.style.opacity = 0;
+                let opacity = 0;
+                let fadeIn = setInterval(() => {
+                    if (opacity < 1) {
+                        opacity += 0.05;
+                        content.style.opacity = opacity;
+                    } else {
+                        clearInterval(fadeIn);
+                    }
+                }, 50);
+            }
+        }
+
+        function showProjectID() {
+            const pidScreen = document.getElementById('project-id-screen');
+            pidScreen.style.display = 'flex';
+            
+            void pidScreen.offsetWidth; 
+            pidScreen.style.opacity = 1;
+            
+            setTimeout(() => {
+                pidScreen.style.opacity = 0;
+                setTimeout(() => {
+                    pidScreen.style.display = 'none';
+                    startTypewriter();
+                }, 500);
+            }, 2000);
+        }
+
+        function startTypewriter() {
+            const twScreen = document.getElementById('typewriter-screen');
+            twScreen.style.display = 'flex'; 
+            
+            const textToType = "【零號檔案】不要抬頭看向天空";
+            const twElement = document.getElementById('tw-text');
+            let i = 0;
+            
+            function type() {
+                if (i < textToType.length) {
+                    twElement.innerText += textToType.charAt(i);
+                    i++;
+                    setTimeout(type, Math.random() * 100 + 50);
+                } else {
+                    document.getElementById('click-to-continue').style.display = 'block';
+                    currentStage = 2; 
+                }
+            }
+            setTimeout(type, 500);
+        }
+
+        // --- 新增：處理點擊按鈕切換區塊的函數 ---
+        // 傳入 event，使用 stopPropagation() 阻止點擊事件擴散到 body，
+        // 避免再次觸發 handleScreenClick()
+        // 單一內容舞台：先淡出，再替換內容，防止上一段警告殘留。
+        let sectionTransitioning = false;
+
+        function switchStoryPart(partName) {
+            if (sectionTransitioning) return;
+            const content = document.getElementById('content');
+            const part2 = document.getElementById('part2');
+            const part3 = document.getElementById('part3');
+            const target = document.getElementById(partName);
+            if (!content || !target) return;
+
+            sectionTransitioning = true;
+            content.style.opacity = '0';
+
+            window.setTimeout(() => {
+                // 保存 part2/part3 的 DOM 節點，不會重新綁定或遺失按鈕事件。
+                // 完整移除 part1，確保進入玩家段落時不會殘留紅字。
+                if (partName === 'part2') {
+                    content.replaceChildren(part2, part3);
+                    part2.style.display = 'block';
+                    part3.style.display = 'none';
+                } else {
+                    content.replaceChildren(part3);
+                    part3.style.display = 'block';
+                }
+
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        content.style.opacity = '1';
+                        window.setTimeout(() => {
+                            sectionTransitioning = false;
+                        }, 900);
+                    });
+                });
+            }, 950);
+        }
+
+        function showPart2(event) {
+            event.stopPropagation();
+            switchStoryPart('part2');
+        }
+
+        function showPart3(event) {
+            event.stopPropagation();
+            switchStoryPart('part3');
+        }
+        // --- 新增：處理音樂淡出與換頁的函數 ---
+        function fadeAndNavigate(event, url) {
+            event.preventDefault(); // 阻止原本的瞬間換頁
+            const bgm = document.getElementById('bgm');
+            let volume = bgm.volume;
+            
+            // 讓整個畫面也跟著慢慢變黑，增加駭入前的沉浸感
+            document.body.style.transition = "opacity 2s";
+            document.body.style.opacity = 0;
+
+            // 每 100 毫秒降低一點音量，直到音量為 0
+            const fadeOutInterval = setInterval(() => {
+                if (volume > 0.05) {
+                    volume -= 0.05;
+                    bgm.volume = volume;
+                } else {
+                    clearInterval(fadeOutInterval);
+                    bgm.pause();
+                    // 音樂淡出完畢，正式跳轉到 purge.html
+                    window.location.href = url;
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>

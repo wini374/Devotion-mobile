@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ENDING A: SACRIFICE</title>
+    <style>
+        body { 
+            background-color: #000000; 
+            color: #ffffff; 
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center;
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+        }
+
+        /* 系統終端機專用字體 (細明體) */
+        .sys-font {
+            font-family: "MingLiU", "細明體", "Courier New", Courier, monospace !important;
+            font-weight: bold;
+        }
+
+        /* 共通舞台設定 */
+        .stage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 700px; /* 保持足夠寬度容納不換行的終端機字 */
+            opacity: 0;
+            pointer-events: none;
+            text-align: center;
+            z-index: 10;
+        }
+        
+        /* 針對敘事文字與最終結局保留淡入淡出 */
+        #stage-1, #stage-4 {
+            transition: opacity 1.5s ease-in-out;
+        }
+        
+        /* 第三階段(系統中止) 強制移除漸變動畫，讓它瞬間出現 */
+        #stage-3 {
+            transition: none !important; 
+        }
+        
+        .stage.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 背景亂碼層 (滿屏設計) */
+        #glitch-bg {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #000;
+            z-index: 1;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #code-spam {
+            width: 100vw; height: 100vh;
+            color: #444444; 
+            font-family: "Courier New", Courier, monospace;
+            font-size: 15px; 
+            letter-spacing: 0px; 
+            line-height: 1;
+            word-break: break-all;
+            text-align: justify; 
+            opacity: 0.8; 
+        }
+        #glitch-bg::after {
+            content: "";
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.5) 3px, rgba(0,0,0,0.5) 4px);
+            pointer-events: none;
+        }
+
+        /* 敘事文字與半透明緊湊底框 */
+        #stage-1 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 150px;
+        }
+        .glass-box {
+            background-color: rgba(10, 10, 10, 0.85); 
+            border: 1px solid #333;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+            border-radius: 6px;
+            padding: 30px 40px; 
+        }
+
+        #text-container {
+            line-height: 2; 
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            width: 100%;
+            position: relative;
+        }
+        .fade-text {
+            opacity: 0;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            transition: opacity 1.5s ease-in-out;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* 瞬間暗色故障閃爍層 */
+        #bw-glitch {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #050505; 
+            z-index: 9999;
+            overflow: hidden;
+        }
+        .bw-band {
+            position: absolute;
+        }
+        .flash-anim {
+            animation: darkFlash 0.1s infinite;
+        }
+        @keyframes darkFlash {
+            0% { transform: translate(5px, -5px); opacity: 1; }
+            50% { transform: translate(-5px, 5px); opacity: 0.6; }
+            100% { transform: translate(0, 0); opacity: 1; }
+        }
+
+        /* 第三階段：系統中止宣告 */
+        #system-terminated {
+            color: #aaaaaa;
+            font-size: 1.5rem;
+            letter-spacing: 5px;
+            white-space: nowrap;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        /* 第四階段：結局標題與墓誌銘 */
+        #stage-4 { max-width: 800px; } 
+        .epitaph {
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            line-height: 2.2;
+            color: #dddddd;
+            margin-bottom: 60px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        .title { font-size: 2.5rem; letter-spacing: 15px; margin-bottom: 20px; font-weight: bold; color: #fff; }
+        .sub { font-size: 1.2rem; letter-spacing: 5px; color: #aaaaaa; margin-bottom: 50px; }
+        
+        /* LOGOUT 按鈕預設隱藏，靠 JS 延遲顯示 */
+        #logout-btn { 
+            background: transparent; border: 1px solid #555; color: #888; 
+            padding: 10px 30px; cursor: pointer; text-decoration: none; letter-spacing: 3px; 
+            transition: opacity 2s ease-in-out, background 0.5s, color 0.5s, box-shadow 0.5s; 
+            display: inline-block;
+            opacity: 0; 
+            pointer-events: none;
+        }
+        #logout-btn:hover { border-color: #fff; color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        
+        /* 加入這個 class 後，按鈕才會浮現 */
+        #stage-4.show-btn #logout-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 電影式片尾：覆蓋畫面，保留同一首背景音樂 */
+        #credits-overlay {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: #000;
+            color: #dedbe7;
+            overflow: hidden;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 1.2s ease-in-out, visibility 0s linear 1.2s;
+        }
+        #credits-overlay.show { visibility: visible; pointer-events: auto; transition: opacity 1.2s ease-in-out, visibility 0s; }
+        #credits-overlay.visible { opacity: 1; }
+        #credits-scroll {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            padding: 0 24px;
+            /* 製作名單必須在黑幕完全淡入後才出現，避免先閃出內容。 */
+            visibility: hidden;
+            opacity: 0;
+            transform: translateY(100vh);
+            animation: none;
+        }
+        #credits-scroll.playing {
+            visibility: visible;
+            opacity: 1;
+            animation: creditsRoll 55s linear forwards;
+        }
+        @keyframes creditsRoll {
+            from { transform: translateY(100vh); }
+            to { transform: translateY(-100%); }
+        }
+        .credit-group { margin: 0 auto 90px; max-width: 780px; }
+        .credit-group h1 { font-size: 2.6rem; letter-spacing: .25em; }
+        .credit-group h3 { font-size: 1rem; letter-spacing: .3em; color: #aaa0c3; margin-bottom: 24px; }
+        .credit-group p { margin: 10px 0; line-height: 1.8; overflow-wrap: anywhere; }
+        .credit-group a { color: inherit; text-decoration: none; transition: color .3s ease; }
+        .credit-group a:hover, .credit-group a:focus-visible { color: #b8a3e0; text-decoration: underline; }
+        /* 曲名與創作者分行，保持電影片尾風格 */
+        .music-entry { margin: 0 0 20px; }
+        .music-entry .music-title { margin: 0; color: #dedbe7; }
+        .music-entry .music-artist { margin: 2px 0 0; font-size: .88rem; color: #a9a4b8; }
+        .credit-group .music-license { margin-top: 25px; font-size: .85em; color: #888; }
+        .credit-group .music-license a { color: #b8a3e0; }
+        #credits-end {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: #000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+        /* 最終選單：先顯示但保持透明，再柔和淡入；離開時淡出 */
+        #credits-end {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 2.5s ease-in-out, visibility 0s linear 2.5s;
+        }
+        #credits-end.show {
+            display: flex;
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            transition: opacity 2.5s ease-in-out, visibility 0s;
+        }
+        #credits-end.fade-away {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #credits-end h1 { letter-spacing: .25em; }
+        #credits-end p { color: #aaa; }
+        .ending-quote {
+            margin: 26px 0 8px;
+            color: #c8c3d2;
+            text-align: center;
+            letter-spacing: .04em;
+            line-height: 1.9;
+        }
+        .ending-quote .quote-en { font-size: .98rem; color: #d5d1dc; }
+        .ending-quote .quote-zh { font-size: .88rem; color: #9993a5; margin-top: 12px; }
+        .credits-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 28px;
+            width: min(100%, 365px);
+        }
+        .credits-buttons button {
+            background: transparent;
+            border: 1px solid #777;
+            border-radius: 7px;
+            color: #ddd;
+            padding: 14px 14px;
+            cursor: pointer;
+            font: inherit;
+            font-size: .95rem;
+            letter-spacing: 0;
+            width: 100%;
+            min-height: 56px;
+            transition: border-color .3s ease, color .3s ease;
+        }
+        .credits-buttons button:hover { border-color: #b8a3e0; color: #b8a3e0; }
+        @media (max-width: 600px) {
+            .credit-group p { font-size: .85rem; }
+            .ending-quote .quote-en { font-size: .86rem; }
+            .ending-quote .quote-zh { font-size: .8rem; }
+            .credits-buttons button { font-size: .82rem; padding: 12px 8px; }
+        }
+    </style>
+    <!-- Mobile edition: responsive layout and touch/audio compatibility -->
+    <link rel="stylesheet" href="mobile.css">
+    <script src="mobile-compat.js"></script>
+</head>
+<body>
+    
+<!-- 電影式製作名單 -->
+<div id="credits-overlay">
+
+    <div id="credits-scroll">
+
+        <section class="credit-group">
+            <h1>DEVOTION</h1>
+            <p>A STORY OF SACRIFICE AND DEVOTION</p>
+        </section>
+
+        <section class="credit-group">
+            <h3>CREATED BY</h3>
+            <p>Wini374</p>
+        </section>
+
+        <section class="credit-group">
+            <h3>STORY & WORLD DESIGN</h3>
+            <p>Wini374</p>
+        </section>
+
+        <section class="credit-group">
+            <h3>PROGRAMMING & WEB DESIGN</h3>
+            <p>Wini374 & Gemini & Chatgpt</p>
+        </section>
+
+        <section class="credit-group">
+            <h3>MUSIC</h3>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/crime-scene-horror-piano-background-music-617911/" target="_blank" rel="noopener noreferrer">Horror Piano - Background Music</a></p>
+                <p class="music-artist">Cinematic-Soul</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/crime-scene-halloween-intro-background-music-617910/" target="_blank" rel="noopener noreferrer">Halloween Intro - Background Music</a></p>
+                <p class="music-artist">Cinematic-Soul</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/nostalgia-love-story-sad-music-background-336560/" target="_blank" rel="noopener noreferrer">Love Story - Sad Music Background</a></p>
+                <p class="music-artist">Pocketbeats</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/trap-no-copyright-music-2-576256/" target="_blank" rel="noopener noreferrer">No Copyright Music 2</a></p>
+                <p class="music-artist">APALONBeats</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/solo-piano-half-of-me-sad-sorrowful-piano-music-445494/" target="_blank" rel="noopener noreferrer">Half Of Me / Sad Sorrowful Piano Music</a></p>
+                <p class="music-artist">MiroMaxMusic</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/meditationspiritual-peaceful-garden-healing-light-piano-for-meditation-zen-landscapes-112199/" target="_blank" rel="noopener noreferrer">Peaceful Garden - Healing Light Piano</a></p>
+                <p class="music-artist">HarumachiMusic</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/music/adventure-documentary-documentary-music-614437/" target="_blank" rel="noopener noreferrer">Documentary - Documentary Music</a></p>
+                <p class="music-artist">DailyVibe</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/modern-classical-momiji-no-niwa-reflective-piano-615856/" target="_blank" rel="noopener noreferrer">Momiji no Niwa - Reflective Piano</a></p>
+                <p class="music-artist">HarumachiMusic</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/music/orchestral-dramatic-cinematic-documentary-609202/" target="_blank" rel="noopener noreferrer">Dramatic Cinematic Documentary</a></p>
+                <p class="music-artist">_musicdream_</p>
+            </div>
+            <div class="music-entry">
+                <p class="music-title"><a href="https://pixabay.com/zh/music/solo-piano-sad-628074/" target="_blank" rel="noopener noreferrer">Sad</a></p>
+                <p class="music-artist">leberch</p>
+            </div>
+            <p class="music-license">
+                Music sourced from <a href="https://pixabay.com/music/" target="_blank" rel="noopener noreferrer">Pixabay</a>
+                <br>Used under the Pixabay Content License
+            </p>
+        </section>
+
+        <section class="credit-group">
+            <h3>SPECIAL THANKS</h3>
+            <p>TO EVERYONE WHO REACHED THE END.</p>
+        </section>
+
+    </div>
+
+    <!-- 製作名單結束後的選擇 -->
+    <div id="credits-end">
+
+        <h1>DEVOTION</h1>
+        <p>Thank you for playing.</p>
+
+        <div class="ending-quote">
+            <div class="quote-en">Every ending is a choice.<br>Every choice leaves something behind.</div>
+            <div class="quote-zh">每一個結局，都是一次抉擇。<br>而每一次抉擇，都會留下某些無法挽回的事物。</div>
+        </div>
+
+        <div class="credits-buttons">
+            <button onclick="leaveCredits('index.html')">
+                &gt; 重新開始 NEW GAME
+            </button>
+
+            <button onclick="returnToChoice()">
+                &gt; 返回最終抉擇 RETURN TO CHOICE
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+
+    <!-- 結局音樂 -->
+    <audio id="end-bgm" src="A.mp3" loop></audio>
+
+    <!-- 背景崩潰代碼層 -->
+    <div id="glitch-bg">
+        <div id="code-spam"></div>
+    </div>
+
+    <!-- 瞬間暗色故障層 -->
+    <div id="bw-glitch"></div>
+
+    <!-- 階段一：敘事區 -->
+    <div id="stage-1" class="stage active">
+        <!-- 敘事與系統文字容器 -->
+        <div id="text-container"></div>
+    </div>
+
+    <!-- 階段三：系統中止宣告 -->
+    <div id="stage-3" class="stage" style="max-width: 800px;">
+        <div id="system-terminated" class="sys-font">> [ 系統已徹底終止。伺服器永久離線... ]</div>
+    </div>
+
+    <!-- 階段四：結局標題與墓誌銘 -->
+    <div id="stage-4" class="stage">
+        <div class="epitaph">
+            世界終於迎來了和平<br>人們為暴君的殞落歡呼，將他的名字遺忘在歷史的塵埃之中<br>而你只是靜靜地站在廢墟裡<br>再也沒有人記得，那個曾經與你並肩而行的人
+        </div>
+        <div class="title">DEVOTION</div>
+        <div class="sub">ENDING A - يأبرني 願你埋葬我</div>
+        <a id="logout-btn" onclick="startCredits()" class="btn">封存結局 ARCHIVE ENDING</a>
+    </div>
+
+    <script>
+        let glitchInterval;
+        let creditsStarted = false;
+        let creditsLeaving = false;
+
+        function startCredits() {
+            if (creditsStarted) return;
+            creditsStarted = true;
+            const stage = document.getElementById('stage-4');
+            const overlay = document.getElementById('credits-overlay');
+            const roll = document.getElementById('credits-scroll');
+            // 保留結局畫面在覆蓋層下方，避免中間出現一幀閃爍。
+            stage.style.pointerEvents = 'none';
+            overlay.classList.add('show');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => overlay.classList.add('visible'));
+            });
+            // 完全淡入黑色後才開始捲動，音樂持續播放。
+            setTimeout(() => roll.classList.add('playing'), 1300);
+            // 保留 end-bgm 持續播放，不重新開始音樂。
+            roll.addEventListener('animationend', () => {
+                roll.style.display = 'none';
+                // 讓畫面先回到純黑，再讓最後的選單淡入。
+                const endScreen = document.getElementById('credits-end');
+                setTimeout(() => endScreen.classList.add('show'), 350);
+            }, { once: true });
+        }
+        function fadeOutFinalScreen(navigate) {
+            if (creditsLeaving) return;
+            creditsLeaving = true;
+            const endScreen = document.getElementById('credits-end');
+            endScreen.classList.add('fade-away');
+            // 畫面淡出時，背景音樂同步緩緩降低音量。
+            const bgm = document.getElementById('end-bgm');
+            const duration = 1600;
+            if (bgm && !bgm.paused) {
+                const initialVolume = bgm.volume;
+                const started = performance.now();
+                function fadeAudio(now) {
+                    const progress = Math.min((now - started) / duration, 1);
+                    bgm.volume = Math.max(0, initialVolume * (1 - progress));
+                    if (progress < 1) requestAnimationFrame(fadeAudio);
+                    else bgm.pause();
+                }
+                requestAnimationFrame(fadeAudio);
+            }
+            setTimeout(navigate, duration + 100);
+        }
+        function leaveCredits(target) {
+            fadeOutFinalScreen(() => { window.location.href = target; });
+        }
+        function returnToChoice() {
+            // 返回上一頁，是否能直接顯示抉擇仍取決於上一頁的狀態管理。
+            fadeOutFinalScreen(() => {
+                window.location.href = 'admin.html?resume=choice';
+            });
+        }
+
+
+        window.onload = async function() {
+            // 音樂淡入
+            const bgm = document.getElementById("end-bgm");
+            if (bgm) {
+                bgm.volume = 0;
+                bgm.play().catch(e => console.log("BGM blocked", e));
+                let vol = 0;
+                const fadeIn = setInterval(() => {
+                    if (vol < 0.6) { vol += 0.02; bgm.volume = vol; } 
+                    else { clearInterval(fadeIn); }
+                }, 200);
+            }
+
+            const stage1 = document.getElementById("stage-1");
+            const container = document.getElementById("text-container");
+
+            await new Promise(r => setTimeout(r, 1000));
+
+            // 1. 動態生成開頭的五句警告 (細明體、逐行瞬間出現)
+            const sysLines = [
+                "> [ WARNING: CORE INSTABILITY DETECTED. ]",
+                "> [ ADMINISTRATOR CONNECTION LOST... ]",
+                "> [ MEMORY FRAGMENTS CORRUPTED... ]",
+                "> [ SYSTEM SELF-DESTRUCT INITIATED. ]",
+                "> [ SERVER PERMANENTLY OFFLINE. ]"
+            ];
+            
+            const sysContainer = document.createElement("div");
+            sysContainer.className = "sys-font";
+            sysContainer.style.fontSize = "1.2rem";
+            sysContainer.style.letterSpacing = "2px";
+            sysContainer.style.color = "#ffffff";
+            sysContainer.style.textShadow = "0 0 10px rgba(255, 255, 255, 0.5)";
+            sysContainer.style.lineHeight = "2.5";
+            sysContainer.style.display = "inline-block";
+            sysContainer.style.textAlign = "left"; 
+            sysContainer.style.whiteSpace = "nowrap"; // 確保絕對不換行
+            container.appendChild(sysContainer);
+
+            for (let i = 0; i < sysLines.length; i++) {
+                const lineDiv = document.createElement("div");
+                lineDiv.innerHTML = sysLines[i];
+                sysContainer.appendChild(lineDiv);
+                await new Promise(r => setTimeout(r, 1200)); // 每行間隔 1.2 秒
+            }
+            
+            // 停留一下後瞬間消失
+            await new Promise(r => setTimeout(r, 1500)); 
+            sysContainer.style.display = "none";
+            sysContainer.remove();
+            
+            await new Promise(r => setTimeout(r, 500));
+
+            // 2. 啟動背景滿屏亂碼與小黑框
+            startBackgroundGlitch();
+            stage1.classList.add("glass-box");
+
+            // 3. 在崩潰的背景下，依序播放敘事文字
+            const epilogueLines = [
+                "你親手按下了終止鍵<br>摧毀了核心，也摧毀了他最後的意識",
+                "外面的天空亮了<br>長達三年的戰火，終於在暴君倒下後，迎來了終結",
+                "他的計畫成功了",
+                "這個世界將會迎來新生，而在史書的記載裡<br>沒有人會知道這個暴君真正的名字",
+                "也沒有人會知道，他曾經也只是個喜歡坐在營火旁<br>笑著談論未來的笨蛋"
+            ];
+
+            for (let i = 0; i < epilogueLines.length; i++) {
+                const div = document.createElement("div");
+                div.className = "fade-text";
+                div.innerHTML = epilogueLines[i];
+                container.appendChild(div);
+                
+                setTimeout(() => { div.style.opacity = 1; }, 50);
+                const stayTime = 2500 + (epilogueLines[i].length * 80); 
+                await new Promise(r => setTimeout(r, stayTime));
+                
+                div.style.opacity = 0;
+                await new Promise(r => setTimeout(r, 1500)); 
+                div.remove();
+            }
+
+            // 4. 文字播放完畢，執行暗色故障與最終死亡
+            await endSystemCrash();
+        };
+
+        // --- 背景滿屏亂碼生成函數 ---
+        function startBackgroundGlitch() {
+            const glitchBg = document.getElementById("glitch-bg");
+            const codeSpam = document.getElementById("code-spam");
+            
+            glitchBg.style.display = "block";
+            setTimeout(() => { glitchBg.style.opacity = 1; }, 50);
+
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|;:,.<>?/\\";
+            glitchInterval = setInterval(() => {
+                let randomCode = "";
+                for (let i = 0; i < 15000; i++) {
+                    randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                codeSpam.innerText = randomCode;
+            }, 80); 
+        }
+
+        // --- 瞬間暗色故障與系統關閉函數 ---
+        async function endSystemCrash() {
+            const stage1 = document.getElementById("stage-1");
+            const glitchBg = document.getElementById("glitch-bg");
+            const bwGlitch = document.getElementById("bw-glitch");
+            const stage3 = document.getElementById("stage-3");
+            const stage4 = document.getElementById("stage-4");
+            
+            // 瞬間關閉敘事小框框
+            stage1.style.display = "none";
+
+            // 觸發強烈的暗色畫面撕裂 (持續 0.8 秒)
+            bwGlitch.style.display = "block";
+            bwGlitch.classList.add("flash-anim");
+            
+            let bwInterval = setInterval(() => {
+                bwGlitch.innerHTML = '';
+                const bandCount = Math.floor(Math.random() * 10) + 10;
+                const bwColors = ['#000000', '#0a0a0a', '#111111', '#1a1a1a', '#222222', '#2d2d2d'];
+
+                for(let i = 0; i < bandCount; i++) {
+                    let band = document.createElement("div");
+                    band.className = "bw-band";
+                    band.style.left = (Math.random() * 100 - 20) + "%"; 
+                    band.style.top = Math.random() * 100 + "%";
+                    band.style.width = (Math.random() * 100 + 50) + "%"; 
+                    band.style.height = (Math.random() * 10 + 1) + "vh"; 
+                    band.style.backgroundColor = bwColors[Math.floor(Math.random() * bwColors.length)];
+                    bwGlitch.appendChild(band);
+                }
+            }, 60);
+
+            await new Promise(r => setTimeout(r, 800));
+
+            // 瞬間斷電，陷入純黑
+            clearInterval(bwInterval);
+            clearInterval(glitchInterval);
+            bwGlitch.style.display = "none";
+            glitchBg.style.display = "none";
+
+            // 死寂黑畫面等待 1.5 秒
+            await new Promise(r => setTimeout(r, 1500));
+
+            // 浮現「系統已徹底終止」
+            stage3.classList.add("active");
+            await new Promise(r => setTimeout(r, 3500));
+            // 瞬間消失
+            stage3.classList.remove("active");
+
+            // 等待 2 秒，帶出結局標題與墓誌銘
+            await new Promise(r => setTimeout(r, 2000));
+            stage4.classList.add("active");
+
+            // 結局標題穩定停留 4 秒後，才慢慢淡入 LOGOUT 按鈕
+            await new Promise(r => setTimeout(r, 4000));
+            stage4.classList.add("show-btn");
+        }
+
+        // --- 跳轉與音樂淡出 ---
+        function fadeOutAndNavigate(targetUrl, bgmId) {
+            const finalStage = document.getElementById("stage-4");
+            const bgm = document.getElementById(bgmId);
+
+            if (finalStage) {
+                finalStage.style.transition = "opacity 2s ease";
+                finalStage.style.opacity = 0;
+            }
+
+            if (bgm && !bgm.paused) {
+                let vol = bgm.volume;
+                const fadeOut = setInterval(() => {
+                    if (vol > 0.05) { 
+                        vol -= 0.05; 
+                        bgm.volume = Math.max(0, vol); 
+                    } else { 
+                        clearInterval(fadeOut); 
+                        bgm.pause(); 
+                        window.location.href = targetUrl; 
+                    }
+                }, 150); 
+            } else {
+                setTimeout(() => { window.location.href = targetUrl; }, 2500);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ADMIN_ROOT_LOG</title>
+    <script>
+        // 進站前標記返回模式：先隱藏日誌，完成定位後再淡入。
+        if (new URLSearchParams(location.search).get("resume") === "choice") {
+            document.documentElement.classList.add("choice-returning");
+        }
+    </script>
+    <style>
+        /* ================= 基礎終端機樣式 ================= */
+        body {
+            background-color: #030303;
+            color: #dddddd;
+            font-family: "Courier New", Courier, monospace;
+            padding: 2rem;
+            line-height: 1.8;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        ::selection { background-color: #ffaa00; color: #000000; }
+        
+        #terminal-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 40px;
+            background-color: rgba(10, 10, 10, 0.8);
+            border: 1px solid #ffaa00;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.1);
+            padding-bottom: 60px;
+        }
+
+        /* 片尾返回：日誌及所有結局選項同步淡入，避免先閃現。 */
+        html.choice-returning #terminal-container,
+        html.choice-returning #action-section,
+        html.choice-returning #hidden-c {
+            opacity: 0;
+            transition: opacity 1.8s ease-in-out;
+        }
+        html.choice-returning.choice-visible #terminal-container,
+        html.choice-returning.choice-visible #action-section,
+        html.choice-returning.choice-visible #hidden-c {
+            opacity: 1;
+        }
+
+        /* 文字層級與顏色 */
+        .sys-auth { color: #ffaa00; margin-bottom: 25px; border-left: 3px solid #ffaa00; padding-left: 15px; font-weight: bold; }
+        .sys-msg { color: #cccccc; margin-bottom: 15px; }
+        .sys-alert { color: #ff3333; margin-top: 30px; margin-bottom: 15px; font-weight: bold; text-shadow: 0 0 3px red; }
+        .memory-log { color: #aaffaa; margin-bottom: 15px; font-style: italic; border-left: 2px solid #aaffaa; padding-left: 15px; }
+        .truth-log { color: #ffaa00; margin-bottom: 15px; border-left: 2px solid #ffaa00; padding-left: 15px; }
+        .final-words { color: #ffffff; margin-top: 40px; margin-bottom: 15px; text-shadow: 0 0 8px #ffffff; font-size: 1.2rem; font-weight: bold; text-align: center; }
+
+        /* 打字機游標 */
+        .cursor {
+            display: inline-block;
+            width: 10px; height: 1.2rem;
+            background-color: currentColor;
+            animation: blink 1s infinite;
+            vertical-align: bottom;
+            margin-left: 4px;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* A、B 按鈕樣式 (橘框外) */
+        .btn {
+            background-color: transparent;
+            padding: 10px 20px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            letter-spacing: 2px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { 
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 結局 D 按鈕 (橘框內) */
+        .backup-btn {
+            display: block; /* 確保它自己佔一行 */
+            margin-top: 40px;
+            text-align: right;
+            color: #006655;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            opacity: 0; /* 預設隱藏，靠 JS 加上 animation class */
+        }
+        .backup-btn span {
+            border-bottom: 1px dashed #006655;
+            padding-bottom: 2px;
+        }
+        .backup-btn:hover span {
+            color: #000;
+            background-color: #006655;
+            box-shadow: 0 0 15px rgba(0,204,170,0.6);
+        }
+        
+        .fade-in-anim {
+            animation: fadeIn 2s forwards;
+        }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* 結局 C 按鈕 (隱藏在畫面右下角) */
+        #hidden-c {
+            position: fixed;
+            bottom: 5px;
+            right: 10px;
+            color: #050505; /* 與背景相近，要反白才看得到 */
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: none;
+            z-index: 100;
+        }
+    </style>
+    <!-- Mobile edition: responsive layout and touch/audio compatibility -->
+    <link rel="stylesheet" href="mobile.css">
+    <script src="mobile-compat.js"></script>
+</head>
+<body>
+
+    <!-- BGM -->
+    <audio id="sad-bgm" src="日誌bgm.mp3" loop></audio>
+
+    <div id="terminal-container">
+        <!-- 腳本會自動將終端機文字打在這裡 -->
+    </div>
+
+    <!-- 結局 A、B 按鈕區 (橘框外) -->
+    <div id="action-section" style="max-width: 800px; margin: 0 auto; margin-top: 30px; margin-bottom: 50px; display: none; justify-content: flex-end; gap: 20px;">
+        <!-- 結局 B 按鈕 (殉情/叛逆) -->
+        <a onclick="fadeOutAndNavigate('end_B.html', 'sad-bgm')" class="btn" style="border: 1px solid #555; color: #888;">> [OVERRIDE] 拒絕。強制上傳自我意識。</a>
+        <!-- 結局 A 按鈕 (成全/主線) -->
+        <a onclick="fadeOutAndNavigate('end_A.html', 'sad-bgm')" class="btn" style="border: 1px solid #ff3333; color: #ff3333; box-shadow: 0 0 10px rgba(255, 51, 51, 0.2);">> [EXECUTE] 遵從遺願，啟動自毀程序。</a>
+    </div>
+
+    <!-- 結局 C 按鈕 (極度隱蔽) -->
+    <a id="hidden-c" onclick="fadeOutAndNavigate('end_C.html', 'sad-bgm')">_ override_admin_privilege</a>
+
+    <script>
+       
+const adminLines = [
+
+    // PHASE 1：最後的日誌
+
+    {
+        class: 'sys-auth',
+        text: "> [ 身份驗證通過。歡迎回來，Null。 ]\n> [ 正在解密隱藏日誌檔... ]"
+    },
+    {
+        class: 'sys-msg',
+        text: "老朋友，如果你看到了這份日誌，代表兩件事。\n你成功駭入了這裡，而我的時間也已經到了。"
+    },
+    {
+        class: 'sys-msg',
+        text: "這是我最後的心願，也是我唯一能留下的真相。"
+    },
+    {
+        class: 'truth-log',
+        text: "這是我的第36次輪迴。"
+    },
+
+    // PHASE 2：營火與過去
+
+    {
+        class: 'sys-alert',
+        text: "> [ 警告：擷取到受損的舊日記憶區塊 ]"
+    },
+    {
+        class: 'memory-log',
+        text: "「在戴上這頂王冠之前，我們也曾並肩坐在營火旁。」"
+    },
+    {
+        class: 'memory-log',
+        text: "「那時候，我們只是兩個並肩作戰的傻瓜，會為了小事爭吵，也會在漫長的夜裡談論未來。」"
+    },
+    {
+        class: 'memory-log',
+        text: "「你說過，我們有一天會改變世界。」"
+    },
+    {
+        class: 'memory-log',
+        text: "「我也曾經相信。」"
+    },
+
+    // PHASE 3：三十五次失敗
+
+    {
+        class: 'sys-msg',
+        text: "但我很快就明白，只要沒有共同的敵人，各方陣營便會因猜忌與貪婪互相撕裂。"
+    },
+    {
+        class: 'sys-msg',
+        text: "於是，我一次又一次地啟動管理員權限，將時間回溯到最初。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我改變過戰爭的起點，救下過瀕臨毀滅的城市，甚至試圖消除所有衝突的根源。"
+    },
+    {
+        class: 'sys-msg',
+        text: "可無論我怎麼做，戰火總會以不同的樣貌重新燃起。"
+    },
+    {
+        class: 'sys-msg',
+        text: "三十五次輪迴，三十五次失敗。\n世界可以重新開始，但那些記憶卻始終留在我的腦海裡。"
+    },
+
+    // PHASE 4：共同敵人
+
+    {
+        class: 'sys-msg',
+        text: "所以，這一次……\n我選擇成為你們共同的敵人。"
+    },
+    {
+        class: 'sys-msg',
+        text: "只要你們將仇恨集中在我身上，只要你們為了推翻同一個暴君而並肩作戰……或許，就能迎來真正的和平。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我焚毀農莊，摧毀反抗軍營地，讓無辜的人為我的計畫付出代價。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我把自己變成了怪物，也親手將你推向我的對立面。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我知道，無論我的理由是什麼，都無法抹去那些傷害。"
+    },
+
+    // PHASE 5：天空的眼睛
+
+    {
+        class: 'sys-alert',
+        text: "> [ SYSTEM WARNING ]\n> [ 正在存取：SOUL_FRAGMENT_ARCHIVE ]"
+    },
+    {
+        class: 'truth-log',
+        text: "> 所有被處決的靈魂資產，皆為管理員本體的靈魂切片。"
+    },
+    {
+        class: 'sys-msg',
+        text: "你應該聽說過「天空的眼睛」吧。"
+    },
+    {
+        class: 'sys-msg',
+        text: "你們以為那是我派出的間諜，但其實……我只是想透過他們，親自體驗這個世界。"
+    },
+    {
+        class: 'sys-msg',
+        text: "他們知道自己是誰，擁有各自的經歷與感情。只有當他們主動呼喚我，或瀕臨死亡時，那些記憶才會傳回我的身邊。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我想知道，如果不再戴著王冠，自己是否還能像普通人一樣活著。"
+    },
+    {
+        class: 'sys-msg',
+        text: "但最後，我親手奪走了他們繼續活下去的可能。"
+    },
+
+    // PHASE 6：資產_03 與靈魂消耗
+
+    {
+        class: 'sys-msg',
+        text: "你還記得灰燼之地，那個被我親手處決的反抗軍成員嗎？"
+    },
+    {
+        class: 'sys-msg',
+        text: "他也是我。我將最慘烈的三十次輪迴記憶，全都交給了他。"
+    },
+    {
+        class: 'sys-msg',
+        text: "可那些記憶終究壓垮了他的意識。我接收到了他最後的訊號，也親手結束了他的生命。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我留下了他的記憶，卻永遠失去了那片靈魂。"
+    },
+    {
+        class: 'sys-msg',
+        text: "靈魂就像一張白紙。當它被寫滿另一段人生，就再也無法恢復成最初的模樣。"
+    },
+    {
+        class: 'sys-msg',
+        text: "而我已經將自己撕得太碎了。"
+    },
+    {
+        class: 'truth-log',
+        text: "第三十七次輪迴，不會到來。"
+    },
+
+    // PHASE 7：最後的告別
+    {
+        class: 'sys-msg',
+        text: "三十五次失敗、無數次離別，還有那些被我親手抹去的笑容……我已經分不清哪些記憶屬於現在，哪些來自早已消失的過去。"
+    },
+    {
+        class: 'sys-msg',
+        text: "有時候，我仍會夢見那堆營火，彷彿只要伸出手，就能再次回到你身邊。"
+    },
+    {
+        class: 'sys-msg',
+        text: "但觸碰到的，只有冰冷的代碼。"
+    },
+    {
+        class: 'sys-msg',
+        text: "我累了。\n我不想再當神，也不想再當暴君了。"
+    },
+    {
+        class: 'sys-msg',
+        text: "請留在光明之中。不要再為了我，踏入那片深淵。"
+    },
+    {
+        class: 'sys-msg',
+        text: "讓我留在那些無法挽回的過去裡吧。你還有屬於自己的未來。"
+    },
+    {
+        class: 'sys-msg',
+        text: "系統核心的最終控制權，我已經解除鎖定。"
+    },
+
+    // PHASE 8：遺言
+
+    {
+        class: 'final-words',
+        text: "按下終止鍵吧。把這個世界還給他們。"
+    },
+    {
+        class: 'final-words',
+        text: "不要猶豫，也不要回頭。"
+    },
+    {
+        class: 'final-words',
+        text: "這是我最後的請求。"
+    },
+    {
+        class: 'final-words',
+        text: "對不起……\n這一次，我恐怕要失約了\n原本還以為，至少最後還能和你一起回家"
+    }
+
+];
+
+
+        window.onload = function() {
+            const bgm = document.getElementById("sad-bgm");
+            if(bgm) {
+                bgm.volume = 0;
+                bgm.play().catch(e => console.log("BGM blocked", e));
+                let vol = 0;
+                const fadeIn = setInterval(() => {
+                    if (vol < 0.7) { vol += 0.05; bgm.volume = vol; }
+                    else clearInterval(fadeIn);
+                }, 200);
+            }
+
+            // Returning from any archived ending bypasses typewriter playback.
+            if (new URLSearchParams(window.location.search).get("resume") === "choice") {
+                restoreAdminChoice();
+            } else {
+                playAdminLog();
+            }
+        };
+
+        async function playAdminLog() {
+            const container = document.getElementById("terminal-container");
+            
+            for (let i = 0; i < adminLines.length; i++) {
+                const lineData = adminLines[i];
+                const div = document.createElement("div");
+                div.className = lineData.class;
+                container.appendChild(div);
+                
+                const cursor = document.createElement("span");
+                cursor.className = "cursor";
+                if (lineData.class === 'sys-auth' || lineData.class === 'truth-log') {
+                    cursor.style.color = '#ffaa00';
+                } else if (lineData.class === 'memory-log') {
+                    cursor.style.color = '#aaffaa';
+                } else if (lineData.class === 'sys-alert' || lineData.class === 'final-words') {
+                    cursor.style.color = 'inherit';
+                } else {
+                    cursor.style.color = '#cccccc';
+                }
+                
+                let currentHTML = "";
+                const text = lineData.text;
+
+                for (let j = 0; j < text.length; j++) {
+                    if (text.charAt(j) === '\n') {
+                        currentHTML += "<br>";
+                    } else {
+                        currentHTML += text.charAt(j);
+                    }
+                    div.innerHTML = currentHTML;
+                    div.appendChild(cursor);
+                    
+                    let speed = Math.random() * 40 + 50; 
+                    if (['，', '。', '？', '！', '…', '\n'].includes(text.charAt(j))) {
+                        speed += 400; 
+                    }
+                    if (lineData.class === 'final-words') {
+                        speed += 120; 
+                    }
+                    
+                    window.scrollTo(0, document.body.scrollHeight);
+                    await new Promise(r => setTimeout(r, speed));
+                }
+                
+                cursor.remove();
+                
+                let pauseTime = 1200;
+                if (lineData.class === 'sys-alert') pauseTime = 600;
+                if (lineData.class === 'final-words') pauseTime = 2000; 
+                await new Promise(r => setTimeout(r, pauseTime)); 
+            }
+            
+            showAdminChoice(true);
+        }
+
+        // 供正常日誌播放與結局返回共同使用的結局選項。
+        function showAdminChoice(animate = true) {
+            const container = document.getElementById("terminal-container");
+            if (!container.querySelector(".backup-btn")) {
+                const backupBtn = document.createElement("a");
+                backupBtn.className = animate ? "backup-btn fade-in-anim" : "backup-btn";
+                if (!animate) backupBtn.style.opacity = "1";
+                backupBtn.innerHTML = "<span>> [ 偵測到未加密的記憶區塊，是否執行 virtual_backup.sh ？ ]</span>";
+                backupBtn.onclick = function() { fadeOutAndNavigate('end_D.html', 'sad-bgm'); };
+                container.appendChild(backupBtn);
+            }
+            document.getElementById("action-section").style.display = "flex";
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        // 封存結局返回時：直接恢復日誌全文與抉擇，不播放逐字動畫。
+        function restoreAdminChoice() {
+            const container = document.getElementById("terminal-container");
+            container.innerHTML = "";
+            const fragment = document.createDocumentFragment();
+            for (const lineData of adminLines) {
+                const div = document.createElement("div");
+                div.className = lineData.class;
+                div.textContent = lineData.text;
+                div.style.whiteSpace = "pre-line";
+                fragment.appendChild(div);
+            }
+            container.appendChild(fragment);
+            showAdminChoice(false);
+            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+            requestAnimationFrame(() => {
+                window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+                requestAnimationFrame(() => {
+                    document.documentElement.classList.add("choice-visible");
+                });
+            });
+        }
+
+        function fadeOutAndNavigate(targetUrl, bgmId) {
+            const container = document.getElementById("terminal-container");
+            const btn = document.getElementById("action-section");
+            const hiddenBtn = document.getElementById("hidden-c");
+            const bgm = document.getElementById(bgmId);
+            
+            // 淡出所有畫面元素
+            if(container) { container.style.transition = "opacity 2s ease"; container.style.opacity = 0; }
+            if(btn) { btn.style.transition = "opacity 2s ease"; btn.style.opacity = 0; }
+            if(hiddenBtn) { hiddenBtn.style.opacity = 0; }
+
+            if (bgm && !bgm.paused) {
+                let vol = bgm.volume;
+                const fadeOut = setInterval(() => {
+                    if (vol > 0.05) { 
+                        vol -= 0.05; 
+                        bgm.volume = Math.max(0, vol); 
+                    } else { 
+                        clearInterval(fadeOut); 
+                        bgm.pause(); 
+                        window.location.href = targetUrl; 
+                    }
+                }, 150); 
+            } else {
+                setTimeout(() => { window.location.href = targetUrl; }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

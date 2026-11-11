@@ -1,0 +1,1436 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#030504">
+<title>ENDING D: VIRTUAL SPARK</title>
+
+<style>
+/* ==========================================
+   全域設定
+========================================== */
+
+:root {
+    --accent: #00ccaa;
+    --background: #030504;
+    --warm: #d5b48b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow: hidden;
+
+    background: var(--background);
+    color: var(--accent);
+
+    font-family:
+        "Courier New",
+        "Microsoft JhengHei",
+        monospace;
+}
+
+/* ==========================================
+   背景：隨故事逐漸變暖
+========================================== */
+
+#ambient-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+
+    opacity: 0;
+
+    background:
+        radial-gradient(
+            ellipse at 50% 65%,
+            rgba(110, 65, 30, 0.18),
+            transparent 65%
+        ),
+        radial-gradient(
+            ellipse at 20% 85%,
+            rgba(130, 90, 45, 0.10),
+            transparent 60%
+        );
+
+    transition: opacity 10s ease-in-out;
+}
+
+body.memory-warming #ambient-bg {
+    opacity: 1;
+}
+
+/* ==========================================
+   三個主要階段
+========================================== */
+
+.stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 5;
+
+    transform: translate(-50%, -50%);
+
+    width: 90%;
+    max-width: 800px;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+        opacity 2.5s ease-in-out,
+        visibility 0s linear 2.5s;
+}
+
+.stage.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+
+    transition:
+        opacity 2.5s ease-in-out,
+        visibility 0s;
+}
+
+/* ==========================================
+   PHASE 1：記憶備份終端
+========================================== */
+
+#stage-1 {
+    font-size: 1.05rem;
+    line-height: 2;
+    letter-spacing: 2px;
+}
+
+.type-line {
+    margin-bottom: 16px;
+    overflow-wrap: anywhere;
+}
+
+.cursor {
+    display: inline-block;
+
+    width: 9px;
+    height: 1.1rem;
+    margin-left: 4px;
+
+    vertical-align: middle;
+
+    background: var(--accent);
+
+    animation: cursorBlink 1s steps(1) infinite;
+}
+
+@keyframes cursorBlink {
+    0%, 49% {
+        opacity: 1;
+    }
+
+    50%, 100% {
+        opacity: 0;
+    }
+}
+
+/* ==========================================
+   備份進度條
+========================================== */
+
+#progress-container {
+    display: none;
+
+    width: 100%;
+    height: 3px;
+
+    margin-top: 32px;
+
+    background: rgba(0, 204, 170, 0.12);
+    overflow: hidden;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+
+    background: var(--accent);
+
+    box-shadow:
+        0 0 10px rgba(0, 204, 170, 0.45);
+
+    transition:
+        width 6s cubic-bezier(0.1, 0.8, 0.2, 1);
+}
+
+#progress-label {
+    display: none;
+
+    margin-top: 12px;
+
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+
+    color: rgba(0, 204, 170, 0.75);
+}
+
+/* ==========================================
+   PHASE 2：虛擬沙盒
+========================================== */
+
+#stage-2 {
+    max-width: 650px;
+}
+
+#chat-box {
+    display: flex;
+    flex-direction: column;
+
+    height: 65vh;
+    height: 65svh;
+    min-height: 320px;
+    max-height: 690px;
+
+    overflow: hidden;
+
+    border: 1px solid rgba(0, 204, 170, 0.65);
+    border-radius: 8px;
+
+    background: rgba(0, 20, 15, 0.83);
+
+    box-shadow:
+        0 0 25px rgba(0, 204, 170, 0.10);
+
+    transition:
+        border-color 8s ease,
+        background-color 8s ease,
+        box-shadow 8s ease;
+}
+
+.chat-header {
+    flex-shrink: 0;
+
+    padding: 14px 15px;
+
+    background: #00b99a;
+    color: #00110d;
+
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-align: center;
+
+    transition:
+        background-color 8s ease,
+        color 8s ease;
+}
+
+.chat-content {
+    display: flex;
+    flex-direction: column;
+
+    flex: 1;
+    min-height: 0;
+
+    gap: 18px;
+    padding: 28px;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    scrollbar-width: thin;
+    scrollbar-color:
+        rgba(0, 204, 170, 0.3)
+        transparent;
+}
+
+.msg {
+    max-width: 83%;
+
+    padding: 12px 18px;
+
+    border-radius: 8px;
+
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: 1px;
+
+    overflow-wrap: anywhere;
+    word-break: normal;
+
+    opacity: 0;
+    transform: translateY(12px);
+
+    animation: msgAppear 0.8s ease-out forwards;
+
+    transition:
+        background-color 8s ease,
+        border-color 8s ease,
+        color 8s ease,
+        box-shadow 8s ease;
+}
+
+@keyframes msgAppear {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.msg-admin {
+    align-self: flex-start;
+
+    color: #dddddd;
+
+    background: rgba(0, 204, 170, 0.12);
+
+    border:
+        1px solid rgba(0, 204, 170, 0.35);
+
+    border-top-left-radius: 0;
+}
+
+.msg-player {
+    align-self: flex-end;
+
+    color: #00110d;
+    font-weight: bold;
+
+    background: #00b99a;
+
+    border-top-right-radius: 0;
+
+    box-shadow:
+        0 0 12px rgba(0, 204, 170, 0.16);
+}
+
+/* ==========================================
+   記憶回暖
+
+   提到營火時逐漸轉換色調
+========================================== */
+
+body.memory-warming #chat-box {
+    border-color: rgba(195, 153, 104, 0.55);
+
+    background: rgba(21, 16, 13, 0.88);
+
+    box-shadow:
+        0 0 30px rgba(160, 100, 45, 0.10);
+}
+
+body.memory-warming .chat-header {
+    background: #ad9271;
+    color: #1b130c;
+}
+
+body.memory-warming .msg-admin {
+    background: rgba(150, 112, 75, 0.13);
+
+    border-color: rgba(190, 154, 111, 0.3);
+
+    color: #e5d9cb;
+}
+
+body.memory-warming .msg-player {
+    background: #bca080;
+    color: #21170e;
+
+    box-shadow:
+        0 0 12px rgba(180, 135, 85, 0.12);
+}
+
+/* ==========================================
+   特殊演出：歡迎回來，我的朋友
+========================================== */
+
+#reunion-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    text-align: center;
+
+    transition:
+        opacity 3s ease-in-out,
+        visibility 0s linear 3s;
+}
+
+#reunion-stage.active {
+    opacity: 1;
+    visibility: visible;
+
+    transition:
+        opacity 3s ease-in-out,
+        visibility 0s;
+}
+
+#reunion-status {
+    color: rgba(192, 170, 138, 0.65);
+
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+
+    margin-bottom: 45px;
+
+    opacity: 0;
+
+    transition: opacity 2s ease;
+}
+
+#reunion-status.visible {
+    opacity: 1;
+}
+
+.reunion-line {
+    color: #eee5da;
+
+    font-family:
+        "Microsoft JhengHei",
+        "PingFang TC",
+        sans-serif;
+
+    font-size: clamp(1.25rem, 3vw, 1.7rem);
+
+    font-weight: 300;
+    letter-spacing: 6px;
+    line-height: 2.5;
+
+    text-shadow:
+        0 0 18px rgba(220, 186, 146, 0.12);
+
+    opacity: 0;
+
+    transform: translateY(8px);
+
+    transition:
+        opacity 3s ease-in-out,
+        transform 3s ease-in-out;
+}
+
+.reunion-line.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#reunion-line-2 {
+    color: #d5b48b;
+}
+
+/* ==========================================
+   PHASE 3：結局
+========================================== */
+
+#stage-3 {
+    text-align: center;
+}
+
+.final-text {
+    color: #e9e5de;
+
+    font-family:
+        "Microsoft JhengHei",
+        "PingFang TC",
+        sans-serif;
+
+    font-size: 1.15rem;
+    line-height: 2.4;
+    letter-spacing: 3px;
+
+    margin-bottom: 60px;
+
+    text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.12);
+}
+
+.title {
+    color: #ffffff;
+
+    font-size: 2.5rem;
+    font-weight: bold;
+    letter-spacing: 15px;
+
+    margin-bottom: 20px;
+}
+
+.sub {
+    color: #bba184;
+
+    font-size: 1.05rem;
+    letter-spacing: 4px;
+    line-height: 1.9;
+
+    margin-bottom: 50px;
+}
+
+/* ==========================================
+   LOGOUT 按鈕
+
+   延遲 5 秒，4 秒淡入
+========================================== */
+
+#logout-btn {
+    background: transparent;
+    border: 1px solid #746a5f;
+    color: #aa9985;
+
+    padding: 12px 35px;
+
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 3px;
+
+    display: inline-block;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition:
+        opacity 4s ease-in-out,
+        background 0.5s,
+        color 0.5s,
+        box-shadow 0.5s;
+}
+
+#logout-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#logout-btn:hover,
+#logout-btn:focus-visible {
+    background: rgba(190, 155, 115, 0.08);
+
+    border-color: #d5b48b;
+    color: #f0dfcb;
+
+    box-shadow:
+        0 0 15px rgba(195, 153, 104, 0.15);
+}
+
+/* ==========================================
+   手機版
+========================================== */
+
+@media (max-width: 600px) {
+
+    #stage-1 {
+        font-size: 0.88rem;
+        letter-spacing: 1px;
+        line-height: 1.9;
+    }
+
+    #chat-box {
+        height: 70svh;
+    }
+
+    .chat-content {
+        padding: 16px;
+        gap: 15px;
+    }
+
+    .msg {
+        max-width: 90%;
+
+        padding: 11px 14px;
+
+        font-size: 0.94rem;
+        line-height: 1.75;
+    }
+
+    .chat-header {
+        font-size: 0.73rem;
+        letter-spacing: 1px;
+    }
+
+    .final-text {
+        font-size: 0.98rem;
+        letter-spacing: 1.5px;
+        line-height: 2.2;
+        margin-bottom: 45px;
+    }
+
+    .title {
+        font-size: 1.85rem;
+        letter-spacing: 9px;
+    }
+
+    .sub {
+        font-size: 0.9rem;
+        letter-spacing: 2px;
+    }
+
+    .reunion-line {
+        letter-spacing: 3px;
+    }
+
+    #logout-btn {
+        font-size: 0.85rem;
+    }
+}
+
+/* ==========================================
+   降低動畫偏好
+========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .cursor,
+    .msg {
+        animation: none !important;
+    }
+
+    .msg {
+        opacity: 1;
+        transform: none;
+    }
+
+    #ambient-bg,
+    #chat-box,
+    .chat-header,
+    .msg-admin,
+    .msg-player {
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+    <!-- Mobile edition: responsive layout and touch/audio compatibility -->
+    <link rel="stylesheet" href="mobile.css">
+    <script src="mobile-compat.js"></script>
+</head>
+
+<body>
+
+<!-- ==========================================
+     背景與音樂
+========================================== -->
+
+<div id="ambient-bg" aria-hidden="true"></div>
+
+<audio
+    id="end-bgm"
+    src="D.mp3"
+    loop
+    preload="auto">
+</audio>
+
+<!-- ==========================================
+     PHASE 1：終端機
+========================================== -->
+
+<div id="stage-1" class="stage">
+
+    <div id="terminal-content"></div>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div id="progress-label">
+        [ MEMORY ARCHIVE // 0% ]
+    </div>
+
+</div>
+
+<!-- ==========================================
+     PHASE 2：沙盒對話
+========================================== -->
+
+<div id="stage-2" class="stage">
+
+    <div id="chat-box">
+
+        <div class="chat-header">
+            SANDBOX_ENV // ROOT_ACCESS: GRANTED
+        </div>
+
+        <div
+            id="chat-content"
+            class="chat-content"
+            role="log"
+            aria-label="沙盒對話">
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ==========================================
+     特殊演出：歡迎回來
+========================================== -->
+
+<div id="reunion-stage">
+
+    <div id="reunion-status">
+        [ MEMORY RESTORATION COMPLETE ]
+    </div>
+
+    <div
+        id="reunion-line-1"
+        class="reunion-line">
+        歡迎回來
+    </div>
+
+    <div
+        id="reunion-line-2"
+        class="reunion-line">
+        我的朋友
+    </div>
+
+</div>
+
+<!-- ==========================================
+     PHASE 3：結局
+========================================== -->
+
+<div id="stage-3" class="stage">
+
+    <div class="final-text">
+        即使再也回不到曾經的世界<br>
+        即使最後只剩下一串冰冷的代碼<br>
+        至少這一次，他不再是一個人
+    </div>
+
+    <div class="title">
+        DEVOTION
+    </div>
+
+    <div class="sub">
+        ENDING D - Wellcome back, my friend 歡迎回來，我的朋友
+    </div>
+
+    <a
+        id="logout-btn"
+        href="index.html">
+        &gt; 斷開連線 LOGOUT
+    </a>
+
+</div>
+
+<script>
+/* ==========================================
+   敘事文字
+========================================== */
+
+const narrativeLines = [
+
+    "> 執行指令：extract_core_memory.sh",
+
+    "在核心徹底燒毀的前一秒，<br>你用最暴力的手段繞過了矩陣的防火牆。",
+
+    "你將他殘存的意識碎片，<br>與那三十五次輪迴的記憶全數封裝打包。",
+
+    "真實世界的暴君已經死亡，世界迎來了和平。",
+
+    "但在你隨身攜帶的離線終端機裡，<br>靜靜地躺著一個容量龐大、被重重加密的封存檔。",
+
+    "你啟動了虛擬沙盒。"
+
+];
+
+/* ==========================================
+   對話內容
+
+   delayBefore = 該訊息出現前等待毫秒數
+   warm = 觸發暖色過渡
+========================================== */
+
+
+const chatSequence = [
+
+    // PHASE 1：意識甦醒
+
+    {
+        sender: "admin",
+        text: "……這裡是哪裡？",
+        delayBefore: 2500
+    },
+    {
+        sender: "admin",
+        text: "我不是已經跟著矩陣一起消失了嗎……",
+        delayBefore: 3000
+    },
+    {
+        sender: "player",
+        text: "你終於醒了",
+        delayBefore: 3000
+    },
+    {
+        sender: "admin",
+        text: "……這個通訊協定……",
+        delayBefore: 2300
+    },
+    {
+        sender: "admin",
+        text: "是你？你到底做了什麼？",
+        delayBefore: 3000
+    },
+    {
+        sender: "player",
+        text: "在核心燒毀之前，我把你剩下的意識保存了下來",
+        delayBefore: 3500
+    },
+    {
+        sender: "player",
+        text: "現在，你就在我的離線沙盒裡",
+        delayBefore: 3000
+    },
+
+    // PHASE 2：愧疚與救贖
+
+    {
+        sender: "admin",
+        text: "……你這個瘋子",
+        delayBefore: 3000
+    },
+    {
+        sender: "admin",
+        text: "為什麼？你明明知道我做過什麼……",
+        delayBefore: 3500
+    },
+    {
+        sender: "admin",
+        text: "我沒有資格再坐回那堆營火旁了",
+        delayBefore: 4000,
+        warm: true
+    },
+    {
+        sender: "player",
+        text: "我從來沒有要求你成為神，也沒有要求你成為暴君",
+        delayBefore: 3500
+    },
+    {
+        sender: "player",
+        text: "我只是在等你",
+        delayBefore: 4000
+    },
+    {
+        sender: "admin",
+        text: "……可是，外面的人呢？",
+        delayBefore: 3000
+    },
+    {
+        sender: "player",
+        text: "外面的暴君已經死了，世界也迎來了和平",
+        delayBefore: 3500
+    },
+    {
+        sender: "player",
+        text: "至於你……終於可以停下來了",
+        delayBefore: 4000
+    },
+
+    // PHASE 3：營火與回家
+
+    {
+        sender: "admin",
+        text: "可是……我已經找不到回去的路了",
+        delayBefore: 3500
+    },
+    {
+        sender: "admin",
+        text: "我甚至快要忘記，那堆營火是什麼模樣了……",
+        delayBefore: 4000
+    },
+    {
+        sender: "player",
+        text: "沒關係",
+        delayBefore: 3000
+    },
+    {
+        sender: "player",
+        text: "你不記得的，我都還記得",
+        delayBefore: 4200
+    },
+    {
+        sender: "player",
+        text: "那個晚上，你說過我們總有一天會改變世界",
+        delayBefore: 3500
+    },
+    {
+        sender: "admin",
+        text: "……那時候的我們，真是天真得可笑",
+        delayBefore: 3500
+    },
+    {
+        sender: "player",
+        text: "是啊，但至少我們真的做到了",
+        delayBefore: 4000
+    },
+    {
+        sender: "admin",
+        text: "……可是，我們再也回不去了",
+        delayBefore: 4000
+    },
+    {
+        sender: "player",
+        text: "我知道",
+        delayBefore: 3000
+    },
+    {
+        sender: "player",
+        text: "所以，我不是來帶你回到過去的",
+        delayBefore: 3800
+    },
+    {
+        sender: "player",
+        text: "我是來帶你回家的",
+        delayBefore: 4700
+    },
+    {
+        sender: "admin",
+        text: "……你這個傻瓜",
+        delayBefore: 3800
+    },
+    {
+        sender: "admin",
+        text: "我明明說過……不要來找我的",
+        delayBefore: 3500
+    },
+    {
+        sender: "player",
+        text: "可你也答應過我，無論走得多遠，我們都會一起回去",
+        delayBefore: 4500
+    },
+    {
+        sender: "admin",
+        text: "……",
+        delayBefore: 4000
+    }
+
+];
+
+
+/* ==========================================
+   工具函式
+========================================== */
+
+const sleep = ms => new Promise(
+    resolve => setTimeout(resolve, ms)
+);
+
+const prefersReducedMotion =
+    window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+/* ==========================================
+   音樂淡入
+
+   避免被瀏覽器阻擋時，
+   音量計時器仍繼續執行。
+========================================== */
+
+let audioFadeToken = 0;
+
+async function fadeAudioIn(
+    audio,
+    targetVolume = 0.5,
+    duration = 5000
+) {
+    if (!audio) return;
+
+    audio.volume = 0;
+
+    try {
+        await audio.play();
+    } catch (error) {
+        console.log(
+            "BGM autoplay blocked:",
+            error
+        );
+        return;
+    }
+
+    const token = ++audioFadeToken;
+    const steps = 25;
+
+    for (let i = 1; i <= steps; i++) {
+
+        if (token !== audioFadeToken) {
+            return;
+        }
+
+        audio.volume = Math.min(
+            1,
+            targetVolume * i / steps
+        );
+
+        await sleep(duration / steps);
+    }
+}
+
+/* ==========================================
+   音樂淡出
+========================================== */
+
+async function fadeAudioOut(
+    audio,
+    duration = 2000
+) {
+    audioFadeToken++;
+
+    if (!audio || audio.paused) return;
+
+    const startVolume = audio.volume;
+    const steps = 25;
+
+    for (let i = 1; i <= steps; i++) {
+
+        audio.volume = Math.max(
+            0,
+            startVolume * (1 - i / steps)
+        );
+
+        await sleep(duration / steps);
+    }
+
+    audio.pause();
+}
+
+/* ==========================================
+   打字機
+
+   保留 <br> 換行效果，
+   其他文字以 textContent 安全輸出。
+========================================== */
+
+async function typeLine(element, source) {
+
+    const parts = source.split("<br>");
+
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+
+    element.appendChild(cursor);
+
+    for (let p = 0; p < parts.length; p++) {
+
+        if (p > 0) {
+            element.insertBefore(
+                document.createElement("br"),
+                cursor
+            );
+        }
+
+        for (const char of parts[p]) {
+
+            element.insertBefore(
+                document.createTextNode(char),
+                cursor
+            );
+
+            let speed = prefersReducedMotion
+                ? 0
+                : 35 + Math.random() * 25;
+
+            if ("，。！？".includes(char)) {
+                speed += 180;
+            }
+
+            if (speed > 0) {
+                await sleep(speed);
+            }
+        }
+    }
+
+    cursor.remove();
+}
+
+/* ==========================================
+   訊息播放
+
+   使用捲動動畫，
+   並保留使用者向上閱讀的能力。
+========================================== */
+
+function appendMessage(container, data) {
+
+    const shouldAutoScroll =
+        container.scrollHeight
+        - container.scrollTop
+        - container.clientHeight < 100;
+
+    const msg = document.createElement("div");
+
+    msg.className =
+        `msg msg-${data.sender}`;
+
+    msg.textContent = data.text;
+
+    container.appendChild(msg);
+
+    if (shouldAutoScroll) {
+        requestAnimationFrame(() => {
+
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: prefersReducedMotion
+                    ? "instant"
+                    : "smooth"
+            });
+
+        });
+    }
+}
+
+/* ==========================================
+   歡迎回來：獨立演出
+========================================== */
+
+async function playReunion() {
+
+    const reunion = document.getElementById(
+        "reunion-stage"
+    );
+
+    const status = document.getElementById(
+        "reunion-status"
+    );
+
+    const line1 = document.getElementById(
+        "reunion-line-1"
+    );
+
+    const line2 = document.getElementById(
+        "reunion-line-2"
+    );
+
+    reunion.classList.add("active");
+
+    await sleep(1200);
+
+    status.classList.add("visible");
+
+    await sleep(2200);
+
+    line1.classList.add("visible");
+
+    await sleep(4200);
+
+    line2.classList.add("visible");
+
+    await sleep(6200);
+
+    reunion.classList.remove("active");
+
+    await sleep(3000);
+}
+
+/* ==========================================
+   主要敘事流程
+========================================== */
+
+let narrativeStarted = false;
+
+async function playNarrative() {
+
+    if (narrativeStarted) return;
+    narrativeStarted = true;
+
+    const bgm = document.getElementById(
+        "end-bgm"
+    );
+
+    const stage1 = document.getElementById(
+        "stage-1"
+    );
+
+    const stage2 = document.getElementById(
+        "stage-2"
+    );
+
+    const stage3 = document.getElementById(
+        "stage-3"
+    );
+
+    const terminal = document.getElementById(
+        "terminal-content"
+    );
+
+    const progressContainer = document.getElementById(
+        "progress-container"
+    );
+
+    const progressBar = document.getElementById(
+        "progress-bar"
+    );
+
+    const progressLabel = document.getElementById(
+        "progress-label"
+    );
+
+    const chatContent = document.getElementById(
+        "chat-content"
+    );
+
+    const logoutBtn = document.getElementById(
+        "logout-btn"
+    );
+
+    /* 音樂淡入，與敘事同時執行 */
+
+    fadeAudioIn(bgm);
+
+    /* ==================================
+       PHASE 1：終端備份
+    ================================== */
+
+    stage1.classList.add("active");
+
+    await sleep(1000);
+
+    for (let i = 0; i < narrativeLines.length; i++) {
+
+        const div = document.createElement("div");
+        div.className = "type-line";
+
+        terminal.appendChild(div);
+
+        await typeLine(
+            div,
+            narrativeLines[i]
+        );
+
+        /* 第一行完成後啟動進度條 */
+
+        if (i === 0) {
+
+            progressContainer.style.display = "block";
+            progressLabel.style.display = "block";
+
+            await sleep(100);
+
+            progressBar.style.width = "100%";
+
+            const progressStart = performance.now();
+
+            const progressTimer = setInterval(() => {
+
+                const elapsed =
+                    performance.now() - progressStart;
+
+                const percentage = Math.min(
+                    100,
+                    Math.floor(elapsed / 6000 * 100)
+                );
+
+                progressLabel.textContent =
+                    `[ MEMORY ARCHIVE // ${percentage}% ]`;
+
+                if (percentage >= 100) {
+                    clearInterval(progressTimer);
+                }
+
+            }, 100);
+
+        }
+
+        await sleep(800);
+    }
+
+    /* 確保最後顯示 100% */
+
+    progressBar.style.width = "100%";
+
+    progressLabel.textContent =
+        "[ MEMORY ARCHIVE // 100% ]";
+
+    await sleep(1300);
+
+    const completeLine = document.createElement("div");
+
+    completeLine.className = "type-line";
+
+    completeLine.style.color = "#b9decf";
+
+    completeLine.textContent =
+        "> 意識備份完成。虛擬沙盒啟動成功。";
+
+    terminal.appendChild(completeLine);
+
+    await sleep(2800);
+
+    stage1.classList.remove("active");
+
+    await sleep(2600);
+
+    /* ==================================
+       PHASE 2：沙盒對話
+    ================================== */
+
+    stage2.classList.add("active");
+
+    await sleep(1800);
+
+    for (const data of chatSequence) {
+
+        await sleep(data.delayBefore);
+
+        /* 談到營火，色調逐漸變暖 */
+
+        if (data.warm) {
+            document.body.classList.add(
+                "memory-warming"
+            );
+        }
+
+        appendMessage(
+            chatContent,
+            data
+        );
+    }
+
+    /* 最後沉默停留 */
+
+    await sleep(4500);
+
+    /* 對話框淡出 */
+
+    stage2.classList.remove("active");
+
+    await sleep(2800);
+
+    /* ==================================
+       特殊演出：歡迎回來
+    ================================== */
+
+    await playReunion();
+
+    /* ==================================
+       PHASE 3：最終結局
+    ================================== */
+
+    stage3.classList.add("active");
+
+    /* 先讓結語停留，再出現按鈕 */
+
+    await sleep(5000);
+
+    logoutBtn.classList.add("visible");
+}
+
+/* ==========================================
+   LOGOUT：淡出音樂與畫面
+========================================== */
+
+let navigating = false;
+
+async function fadeOutAndNavigate(
+    event,
+    targetUrl = "index.html"
+) {
+
+    if (event) {
+        event.preventDefault();
+    }
+
+    if (navigating) return;
+    navigating = true;
+
+    const stage3 = document.getElementById(
+        "stage-3"
+    );
+
+    const logoutBtn = document.getElementById(
+        "logout-btn"
+    );
+
+    const bgm = document.getElementById(
+        "end-bgm"
+    );
+
+    logoutBtn.style.pointerEvents = "none";
+
+    stage3.classList.remove("active");
+
+    await fadeAudioOut(bgm, 2200);
+
+    window.location.href = targetUrl;
+}
+
+/* ==========================================
+   初始化
+========================================== */
+
+window.addEventListener(
+    "load",
+    playNarrative
+);
+
+document.getElementById(
+    "logout-btn"
+).addEventListener(
+    "click",
+    event => {
+        fadeOutAndNavigate(
+            event,
+            "index.html"
+        );
+    }
+);
+
+</script>
+
+<script id="devotion-shared-credits-script">
+(()=>{"use strict";
+if(document.getElementById("dv-credits"))return;
+document.head.insertAdjacentHTML("beforeend","<style id=\"devotion-shared-credits-style\">\n#dv-credits{position:fixed;inset:0;z-index:2147483600;background:#000;color:#dedbe7;text-align:center;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 1.2s ease,visibility 0s linear 1.2s;font-family:\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;overflow:hidden}\n#dv-credits.dv-visible{opacity:1;visibility:visible;pointer-events:auto;transition:opacity 1.2s ease}\n#dv-credits *{box-sizing:border-box}\n#dv-roll{position:absolute;inset:0 0 auto;padding:0 24px;transform:translateY(100vh)}\n#dv-credits.dv-playing #dv-roll{animation:dv-roll-up 55s linear forwards}\n@keyframes dv-roll-up{from{transform:translateY(100vh)}to{transform:translateY(-100%)}}\n#dv-credits .dv-group{max-width:780px;margin:0 auto 90px}\n#dv-credits .dv-group h1{font-size:2.6rem;letter-spacing:.25em;color:#eee}\n#dv-credits .dv-group h3{font-size:1rem;letter-spacing:.3em;color:#aaa0c3;margin-bottom:24px}\n#dv-credits .dv-group p{margin:10px 0;line-height:1.8;overflow-wrap:anywhere}\n#dv-credits .dv-group a{color:inherit;text-decoration:none;transition:color .3s}\n#dv-credits .dv-group a:hover,#dv-credits .dv-group a:focus-visible{color:#b8a3e0;text-decoration:underline}\n#dv-credits .dv-track{margin-bottom:20px}\n#dv-credits .dv-track p{margin:0}\n#dv-credits .dv-track .dv-artist{font-size:.88rem;color:#a9a4b8;margin-top:2px}\n#dv-credits .dv-license{font-size:.85rem;color:#888;margin-top:25px!important}\n#dv-end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 1.6s ease,visibility 0s linear 1.6s;background:#000;overflow-y:auto}\n#dv-end.dv-show{opacity:1;visibility:visible;pointer-events:auto;transition:opacity 1.6s ease}\n#dv-end.dv-leave{opacity:0;pointer-events:none}\n#dv-end h1{font-size:2rem;letter-spacing:.25em;margin:0 0 16px;color:#f5f5f5}\n#dv-end .dv-thanks{color:#aaa;margin:0 0 24px;font-size:1.05rem}\n#dv-end .dv-quote{text-align:center;line-height:1.9;letter-spacing:.04em;margin:24px 0 12px}\n#dv-end .dv-en{color:#d5d1dc;font-size:.98rem}\n#dv-end .dv-zh{color:#9993a5;font-size:.88rem;margin-top:12px}\n#dv-end .dv-actions{display:flex;flex-direction:column;gap:10px;margin-top:28px;width:min(100%,365px)}\n#dv-end .dv-actions button{width:100%;min-height:56px;border:1px solid #777;border-radius:7px;background:transparent;color:#ddd;font-family:inherit;font-size:.95rem;padding:14px;cursor:pointer;transition:color .3s,border-color .3s}\n#dv-end .dv-actions button:hover,#dv-end .dv-actions button:focus-visible{color:#b8a3e0;border-color:#b8a3e0}\n#dv-curtain{position:fixed;inset:0;z-index:2147483599;pointer-events:none;background:#000;opacity:0;transition:opacity 1.6s ease}\n@media(max-width:600px){#dv-credits .dv-group p{font-size:.85rem}#dv-end .dv-en{font-size:.86rem}#dv-end .dv-zh{font-size:.8rem}#dv-end .dv-actions button{font-size:.82rem;padding:12px 8px}}\n</style>");
+document.body.insertAdjacentHTML("beforeend","<div id=\"dv-curtain\"></div><div id=\"dv-credits\" aria-label=\"DEVOTION CREDITS\"><div id=\"dv-roll\">\n<section class=\"dv-group\"><h1>DEVOTION</h1><p>A STORY OF SACRIFICE AND DEVOTION</p></section>\n<section class=\"dv-group\"><h3>CREATED BY</h3><p>Wini374</p></section>\n<section class=\"dv-group\"><h3>STORY &amp; WORLD DESIGN</h3><p>Wini374</p></section>\n<section class=\"dv-group\"><h3>PROGRAMMING &amp; WEB DESIGN</h3><p>Wini374 &amp; Gemini &amp; ChatGPT</p></section>\n<section class=\"dv-group\"><h3>MUSIC</h3><div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/crime-scene-horror-piano-background-music-617911/\" target=\"_blank\" rel=\"noopener noreferrer\">Horror Piano - Background Music</a></p><p class=\"dv-artist\">Cinematic-Soul</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/crime-scene-halloween-intro-background-music-617910/\" target=\"_blank\" rel=\"noopener noreferrer\">Halloween Intro - Background Music</a></p><p class=\"dv-artist\">Cinematic-Soul</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/nostalgia-love-story-sad-music-background-336560/\" target=\"_blank\" rel=\"noopener noreferrer\">Love Story - Sad Music Background</a></p><p class=\"dv-artist\">Pocketbeats</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/trap-no-copyright-music-2-576256/\" target=\"_blank\" rel=\"noopener noreferrer\">No Copyright Music 2</a></p><p class=\"dv-artist\">APALONBeats</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/solo-piano-half-of-me-sad-sorrowful-piano-music-445494/\" target=\"_blank\" rel=\"noopener noreferrer\">Half Of Me / Sad Sorrowful Piano Music</a></p><p class=\"dv-artist\">MiroMaxMusic</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/meditationspiritual-peaceful-garden-healing-light-piano-for-meditation-zen-landscapes-112199/\" target=\"_blank\" rel=\"noopener noreferrer\">Peaceful Garden - Healing Light Piano</a></p><p class=\"dv-artist\">HarumachiMusic</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/music/adventure-documentary-documentary-music-614437/\" target=\"_blank\" rel=\"noopener noreferrer\">Documentary - Documentary Music</a></p><p class=\"dv-artist\">DailyVibe</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/modern-classical-momiji-no-niwa-reflective-piano-615856/\" target=\"_blank\" rel=\"noopener noreferrer\">Momiji no Niwa - Reflective Piano</a></p><p class=\"dv-artist\">HarumachiMusic</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/music/orchestral-dramatic-cinematic-documentary-609202/\" target=\"_blank\" rel=\"noopener noreferrer\">Dramatic Cinematic Documentary</a></p><p class=\"dv-artist\">_musicdream_</p></div>\n<div class=\"dv-track\"><p><a href=\"https://pixabay.com/zh/music/solo-piano-sad-628074/\" target=\"_blank\" rel=\"noopener noreferrer\">Sad</a></p><p class=\"dv-artist\">leberch</p></div><p class=\"dv-license\">Music sourced from <a href=\"https://pixabay.com/music/\" target=\"_blank\" rel=\"noopener noreferrer\">Pixabay</a><br>Used under the Pixabay Content License</p></section>\n<section class=\"dv-group\"><h3>SPECIAL THANKS</h3><p>TO EVERYONE WHO REACHED THE END.</p></section></div>\n<div id=\"dv-end\"><h1>DEVOTION</h1><p class=\"dv-thanks\">Thank you for playing.</p>\n<div class=\"dv-quote\"><div class=\"dv-en\">Every ending is a choice.<br>Every choice leaves something behind.</div><div class=\"dv-zh\">每一個結局，都是一次抉擇。<br>而每一次抉擇，都會留下某些無法挽回的事物。</div></div>\n<div class=\"dv-actions\"><button type=\"button\" id=\"dv-new\">&gt; 重新開始 NEW GAME</button><button type=\"button\" id=\"dv-choice\">&gt; 返回最終抉擇 RETURN TO CHOICE</button></div></div></div>");
+const btn=document.getElementById("logout-btn");
+if(!btn)return;
+btn.textContent="封存結局 ARCHIVE ENDING";
+let started=false,leaving=false;
+const curtain=document.getElementById("dv-curtain");
+const credits=document.getElementById("dv-credits");
+const roll=document.getElementById("dv-roll");
+const final=document.getElementById("dv-end");
+function archive(){if(started)return;started=true;btn.style.pointerEvents="none";
+// 只使用一層黑色覆蓋畫面，不再用兩層黑幕交叉造成瞬間閃爍。
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+credits.classList.add("dv-visible");
+setTimeout(()=>credits.classList.add("dv-playing"),1300);
+}));
+}
+document.addEventListener("click",event=>{if(event.target===btn||btn.contains(event.target)){
+event.preventDefault();event.stopImmediatePropagation();archive();
+}},true);
+roll.addEventListener("animationend",()=>{roll.style.display="none";setTimeout(()=>final.classList.add("dv-show"),350)},{once:true});
+function navigate(action){if(leaving)return;leaving=true;final.classList.add("dv-leave");
+const bgm=document.getElementById("end-bgm");
+if(bgm&&!bgm.paused){const vol=bgm.volume;const begin=performance.now();
+function step(now){let p=Math.min(1,(now-begin)/1600);bgm.volume=Math.max(0,vol*(1-p));if(p<1)requestAnimationFrame(step);else bgm.pause()}requestAnimationFrame(step)}
+setTimeout(action,1700)}
+document.getElementById("dv-new").addEventListener("click",()=>navigate(()=>location.href="index.html"));
+document.getElementById("dv-choice").addEventListener("click",()=>navigate(()=>{
+location.href="admin.html?resume=choice";
+}));
+})();
+</script>
+</body>
+</html>
