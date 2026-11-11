@@ -1,0 +1,54 @@
+name: Import DEVOTION mobile edition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-mobile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download original mobile branch including MP3 soundtracks
+        run: |
+          git clone --depth 1 --single-branch --branch mobile \
+            https://github.com/wini374/Devotion.git /tmp/devotion-mobile-source
+
+      - name: Copy mobile website files without overwriting this workflow
+        run: |
+          rsync -a /tmp/devotion-mobile-source/ ./ \
+            --exclude=".git/" \
+            --exclude=".github/" \
+            --exclude="README.md"
+          test -f index.html
+          test -f mobile.css
+          test -f mobile-compat.js
+          test -f "A.mp3"
+          test -f "B.mp3"
+          test -f "C.mp3"
+          test -f "D.mp3"
+          test -f "日誌bgm.mp3"
+          test -f "開頭1.mp3"
+          echo "Mobile website and soundtrack files present."
+
+      - name: Commit and push copied files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if ! git diff --cached --quiet; then
+            git commit -m "Import complete DEVOTION mobile edition and audio assets"
+            git push origin HEAD:main
+          else
+            echo "No changes needed."
+          fi
