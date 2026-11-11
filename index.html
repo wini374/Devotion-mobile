@@ -849,10 +849,17 @@
 `;
 
         // 保留原本點擊全螢幕切換前三階段的機制
-        function handleScreenClick() {
+        let mobileIntroStarting = false;
+        async function handleScreenClick() {
             if (currentStage === 0) {
+                if (mobileIntroStarting) return;
+                mobileIntroStarting = true;
+                if (window.devotionMobileStartAudio) {
+                    await window.devotionMobileStartAudio(document.getElementById('bgm'));
+                } else {
+                    document.getElementById('bgm').play().catch(() => {});
+                }
                 currentStage = 1;
-                document.getElementById('bgm').play();
                 document.getElementById('boot-screen').style.display = 'none';
                 
                 const asciiScreen = document.getElementById('ascii-devotion-screen');
