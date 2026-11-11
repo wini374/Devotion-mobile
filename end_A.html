@@ -594,7 +594,7 @@
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|;:,.<>?/\\";
             glitchInterval = setInterval(() => {
                 let randomCode = "";
-                for (let i = 0; i < 15000; i++) {
+                for (let i = 0; i < 20000; i++) {
                     randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
                 }
                 codeSpam.innerText = randomCode;
