@@ -332,10 +332,11 @@ const scriptLines = [
 
 ];
 
-        window.onload = function() {
+        window.onload = async function() {
             const bgm = document.getElementById("terminal-bgm");
             bgm.volume = 0;
-            bgm.play().catch(e => console.log("BGM blocked", e));
+            if (window.devotionMobileStartAudio) await window.devotionMobileStartAudio(bgm);
+            else bgm.play().catch(e => console.log("BGM blocked", e));
             
 let vol = 0;
 
